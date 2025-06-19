@@ -6,6 +6,11 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		E45EA6DD2E04718100C89EBE /* GooglePlaces in Frameworks */ = {isa = PBXBuildFile; productRef = E45EA6DC2E04718100C89EBE /* GooglePlaces */; };
+		E45EA6E02E04718E00C89EBE /* GoogleMaps in Frameworks */ = {isa = PBXBuildFile; productRef = E45EA6DF2E04718E00C89EBE /* GoogleMaps */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		E4B4DB452E04657500992385 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -52,6 +57,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E45EA6E02E04718E00C89EBE /* GoogleMaps in Frameworks */,
+				E45EA6DD2E04718100C89EBE /* GooglePlaces in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -112,6 +119,8 @@
 			);
 			name = DriveLess;
 			packageProductDependencies = (
+				E45EA6DC2E04718100C89EBE /* GooglePlaces */,
+				E45EA6DF2E04718E00C89EBE /* GoogleMaps */,
 			);
 			productName = DriveLess;
 			productReference = E4B4DB372E04657300992385 /* DriveLess.app */;
@@ -195,6 +204,10 @@
 			);
 			mainGroup = E4B4DB2E2E04657300992385;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				E45EA6DB2E04718100C89EBE /* XCRemoteSwiftPackageReference "ios-places-sdk" */,
+				E45EA6DE2E04718E00C89EBE /* XCRemoteSwiftPackageReference "ios-maps-sdk" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E4B4DB382E04657300992385 /* Products */;
 			projectDirPath = "";
@@ -400,6 +413,8 @@
 				DEVELOPMENT_TEAM = DCXK36979S;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "DriveLess needs location access to provide route optimization and navigation features.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "DriveLess needs location access to provide route optimization from your current location.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -428,6 +443,8 @@
 				DEVELOPMENT_TEAM = DCXK36979S;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "DriveLess needs location access to provide route optimization and navigation features.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "DriveLess needs location access to provide route optimization from your current location.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -558,6 +575,38 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		E45EA6DB2E04718100C89EBE /* XCRemoteSwiftPackageReference "ios-places-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/googlemaps/ios-places-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 10.0.0;
+			};
+		};
+		E45EA6DE2E04718E00C89EBE /* XCRemoteSwiftPackageReference "ios-maps-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/googlemaps/ios-maps-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 10.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		E45EA6DC2E04718100C89EBE /* GooglePlaces */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E45EA6DB2E04718100C89EBE /* XCRemoteSwiftPackageReference "ios-places-sdk" */;
+			productName = GooglePlaces;
+		};
+		E45EA6DF2E04718E00C89EBE /* GoogleMaps */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E45EA6DE2E04718E00C89EBE /* XCRemoteSwiftPackageReference "ios-maps-sdk" */;
+			productName = GoogleMaps;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = E4B4DB2F2E04657300992385 /* Project object */;
 }

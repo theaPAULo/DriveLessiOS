@@ -9,6 +9,9 @@ import SwiftUI
 
 @main
 struct DriveLessApp: App {
+    // Register AppDelegate
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
