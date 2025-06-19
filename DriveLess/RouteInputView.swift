@@ -2,16 +2,18 @@
 //  RouteInputView.swift
 //  DriveLess
 //
-//  Route input interface for planning multi-stop routes
+//  Clean, modern route input interface optimized for mobile
 //
 
 import SwiftUI
+import GooglePlaces  // <-- ADD THIS LINE
+
 
 struct RouteInputView: View {
-    // State for route inputs
+    // MARK: - State Properties
     @State private var startLocation: String = ""
     @State private var endLocation: String = ""
-    @State private var savedEndLocation: String = "" // Store the original end location
+    @State private var savedEndLocation: String = ""
     @State private var stops: [String] = [""] // Start with one empty stop
     @State private var isRoundTrip: Bool = false
     @State private var considerTraffic: Bool = true
@@ -19,188 +21,362 @@ struct RouteInputView: View {
     // Reference to location manager
     @ObservedObject var locationManager: LocationManager
     
+    // MARK: - Color Theme (Earthy)
+    private let primaryGreen = Color(red: 0.2, green: 0.4, blue: 0.2) // Dark forest green
+    private let accentBrown = Color(red: 0.4, green: 0.3, blue: 0.2) // Rich brown
+    private let lightGreen = Color(red: 0.7, green: 0.8, blue: 0.7) // Soft green
+    
     var body: some View {
-        VStack(spacing: 20) {
-            // Header
-            VStack {
-                Text("Plan Your Route")
-                    .font(.title)
-                    .fontWeight(.semibold)
-                
-                Text("Add stops and optimize your journey")
-                    .font(.subheadline)
-                    .foregroundColor(.gray)
-            }
-            .padding(.top)
-            
+        NavigationView {
             ScrollView {
-                VStack(spacing: 15) {
+                VStack(spacing: 24) {
                     
-                    // Start Location Input with Autocomplete
-                    VStack(alignment: .leading, spacing: 5) {
-                        HStack {
-                            Image(systemName: "location.circle.fill")
-                                .foregroundColor(.green)
-                            Text("Starting Location")
-                                .font(.headline)
-                        }
-                        
-                        InlineAutocompleteTextField(
-                            text: $startLocation,
-                            placeholder: "Enter starting address",
-                            icon: "location.fill",
-                            iconColor: .green,
-                            currentLocation: locationManager.location,
-                            onPlaceSelected: { place in
-                                print("🏠 Selected start: \(place.formattedAddress ?? "")")
-                                // Auto-update end location if round trip is enabled
-                                if isRoundTrip {
-                                    endLocation = startLocation
-                                }
-                            }
-                        )
-                        
-                        // Use current location button
-                        Button(action: useCurrentLocationForStart) {
-                            HStack {
-                                Image(systemName: "location.fill")
-                                    .foregroundColor(.blue)
-                                Text("Use Current Location")
-                                    .font(.caption)
-                            }
-                        }
-                        .disabled(locationManager.location == nil)
-                    }
+                    // MARK: - Header Section
+                    headerSection
                     
-                    // Round Trip Toggle
-                    Toggle("Round Trip (return to start)", isOn: $isRoundTrip)
-                        .onChange(of: isRoundTrip) { _, newValue in
-                            if newValue {
-                                // Save current end location and set to start location
-                                savedEndLocation = endLocation
-                                endLocation = startLocation
-                            } else {
-                                // Restore previous end location
-                                endLocation = savedEndLocation
-                            }
-                        }
+                    // MARK: - Route Input Card
+                    routeInputCard
                     
-                    // Traffic Toggle
-                    Toggle("Consider current traffic", isOn: $considerTraffic)
+                    // MARK: - Options Card
+                    optionsCard
                     
-                    // Stops Section
-                    VStack(alignment: .leading, spacing: 10) {
-                        HStack {
-                            Image(systemName: "mappin.and.ellipse")
-                                .foregroundColor(.blue)
-                            Text("Stops")
-                                .font(.headline)
-                        }
-                        
-                        ForEach(stops.indices, id: \.self) { index in
-                            HStack {
-                                InlineAutocompleteTextField(
-                                    text: $stops[index],
-                                    placeholder: "Enter stop address",
-                                    icon: "mappin",
-                                    iconColor: .blue,
-                                    currentLocation: locationManager.location,
-                                    onPlaceSelected: { place in
-                                        print("🏠 Selected stop: \(place.formattedAddress ?? "")")
-                                    }
-                                )
-                                
-                                if stops.count > 1 {
-                                    Button(action: { removeStop(at: index) }) {
-                                        Image(systemName: "minus.circle.fill")
-                                            .foregroundColor(.red)
-                                    }
-                                }
-                            }
-                        }
-                        
-                        Button(action: addStop) {
-                            HStack {
-                                Image(systemName: "plus.circle.fill")
-                                    .foregroundColor(.green)
-                                Text("Add Another Stop")
-                            }
-                            .font(.subheadline)
-                        }
-                    }
+                    // MARK: - Optimize Button
+                    optimizeButton
                     
-                    // End Location Input (always visible, disabled if round trip)
-                    VStack(alignment: .leading, spacing: 5) {
-                        HStack {
-                            Image(systemName: "flag.checkered")
-                                .foregroundColor(.red)
-                            Text("Ending Location")
-                                .font(.headline)
-                            
-                            if isRoundTrip {
-                                Text("(same as start)")
-                                    .font(.caption)
-                                    .foregroundColor(.gray)
-                            }
-                        }
-                        
-                        InlineAutocompleteTextField(
-                            text: $endLocation,
-                            placeholder: isRoundTrip ? "Will return to starting location" : "Enter ending address",
-                            icon: "flag.checkered",
-                            iconColor: .red,
-                            currentLocation: locationManager.location,
-                            onPlaceSelected: { place in
-                                print("🏠 Selected end: \(place.formattedAddress ?? "")")
-                                if !isRoundTrip {
-                                    savedEndLocation = endLocation
-                                }
-                            }
-                        )
-                        .disabled(isRoundTrip)
-                        .opacity(isRoundTrip ? 0.6 : 1.0)
-                    }
-                    
-                    // Optimize Route Button - Direct NavigationLink
-                    NavigationLink(destination: RouteResultsView(routeData: createRouteData())) {
-                        HStack {
-                            Image(systemName: "map")
-                            Text("Optimize Route")
-                        }
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(canOptimizeRoute ? Color.green : Color.gray)
-                        .cornerRadius(10)
-                    }
-                    .disabled(!canOptimizeRoute)
+                    Spacer(minLength: 20)
                 }
-                .padding()
+                .padding(.horizontal, 20)
+                .padding(.top, 10)
+            }
+            .background(Color(.systemGroupedBackground))
+            .navigationBarHidden(true)
+        }
+    }
+    
+    // MARK: - Header Section
+    private var headerSection: some View {
+        VStack(spacing: 8) {
+            HStack {
+                // App logo/title
+                Text("DriveLess")
+                    .font(.largeTitle)
+                    .fontWeight(.bold)
+                    .foregroundColor(primaryGreen)
+                
+                Spacer()
+                
+                // Settings icon (placeholder for future)
+                Button(action: {}) {
+                    Image(systemName: "gearshape.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(.gray)
+                }
+                .disabled(true) // Will enable later
+            }
+            
+            Text("Plan your optimal route")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+    
+    // MARK: - Route Input Card
+    private var routeInputCard: some View {
+        VStack(spacing: 20) {
+            
+            // Start Location
+            VStack(alignment: .leading, spacing: 8) {
+                InlineAutocompleteTextField(
+                    text: $startLocation,
+                    placeholder: "Starting location",
+                    icon: "location.circle.fill",
+                    iconColor: primaryGreen,
+                    currentLocation: locationManager.location,
+                    onPlaceSelected: { place in
+                        handleStartLocationSelected(place)
+                    }
+                )
+                
+                // Use current location button
+                if locationManager.location != nil {
+                    Button(action: useCurrentLocationForStart) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "location.fill")
+                                .font(.system(size: 14))
+                            Text("Use current location")
+                                .font(.system(size: 14, weight: .medium))
+                        }
+                        .foregroundColor(primaryGreen)
+                    }
+                    .padding(.leading, 4)
+                }
+            }
+            
+            // Visual connector line
+            connectorLine
+            
+            // Stops Section
+            stopsSection
+            
+            // Another connector line
+            connectorLine
+            
+            // End Location
+            VStack(alignment: .leading, spacing: 8) {
+                InlineAutocompleteTextField(
+                    text: $endLocation,
+                    placeholder: isRoundTrip ? "Return to start" : "Destination",
+                    icon: "flag.checkered",
+                    iconColor: accentBrown,
+                    currentLocation: locationManager.location,
+                    onPlaceSelected: { place in
+                        handleEndLocationSelected(place)
+                    }
+                )
+                .disabled(isRoundTrip)
+                .opacity(isRoundTrip ? 0.6 : 1.0)
             }
         }
-        .navigationBarTitleDisplayMode(.inline)
-        .navigationBarBackButtonHidden(false)
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.systemBackground))
+                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+        )
+    }
+    
+    // MARK: - Visual Connector Line
+    private var connectorLine: some View {
+        HStack {
+            Spacer()
+                .frame(width: 36) // Align with icon position
+            
+            Rectangle()
+                .fill(Color.gray.opacity(0.3))
+                .frame(width: 2, height: 20)
+            
+            Spacer()
+        }
+    }
+    
+    // MARK: - Stops Section
+    private var stopsSection: some View {
+        VStack(spacing: 16) {
+            ForEach(stops.indices, id: \.self) { index in
+                HStack(spacing: 12) {
+                    InlineAutocompleteTextField(
+                        text: $stops[index],
+                        placeholder: "Add stop",
+                        icon: "mappin.circle.fill",
+                        iconColor: Color(.systemBlue),
+                        currentLocation: locationManager.location,
+                        onPlaceSelected: { place in
+                            print("🏠 Selected stop: \(place.formattedAddress ?? "")")
+                        }
+                    )
+                    
+                    // Remove stop button (only show if more than 1 stop)
+                    if stops.count > 1 {
+                        Button(action: { removeStop(at: index) }) {
+                            Image(systemName: "minus.circle.fill")
+                                .font(.system(size: 24))
+                                .foregroundColor(.red)
+                        }
+                    }
+                }
+            }
+            
+            // Add stop button
+            Button(action: addStop) {
+                HStack(spacing: 8) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 16))
+                    Text("Add stop")
+                        .font(.system(size: 16, weight: .medium))
+                }
+                .foregroundColor(primaryGreen)
+                .padding(.leading, 40) // Align with text field content
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+    
+    // MARK: - Options Card
+    private var optionsCard: some View {
+        VStack(spacing: 16) {
+            
+            // Round Trip Toggle
+            toggleRow(
+                icon: "arrow.triangle.2.circlepath",
+                title: "Round trip",
+                subtitle: "Return to starting location",
+                isOn: $isRoundTrip,
+                color: primaryGreen
+            )
+            .onChange(of: isRoundTrip) { _, newValue in
+                handleRoundTripToggle(newValue)
+            }
+            
+            Divider()
+            
+            // Traffic Toggle
+            toggleRow(
+                icon: "car.fill",
+                title: "Consider traffic",
+                subtitle: "Use real-time traffic data",
+                isOn: $considerTraffic,
+                color: .orange
+            )
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.systemBackground))
+                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+        )
+    }
+    
+    // MARK: - Toggle Row Component
+    private func toggleRow(
+        icon: String,
+        title: String,
+        subtitle: String,
+        isOn: Binding<Bool>,
+        color: Color
+    ) -> some View {
+        HStack(spacing: 16) {
+            // Icon
+            Image(systemName: icon)
+                .font(.system(size: 20, weight: .medium))
+                .foregroundColor(color)
+                .frame(width: 24)
+            
+            // Text
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.primary)
+                
+                Text(subtitle)
+                    .font(.system(size: 14))
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+            
+            // Toggle
+            Toggle("", isOn: isOn)
+                .labelsHidden()
+                .tint(color)
+        }
+    }
+    
+    // MARK: - Optimize Button
+    private var optimizeButton: some View {
+        NavigationLink(destination: RouteResultsView(routeData: createRouteData())) {
+            HStack(spacing: 12) {
+                Image(systemName: "map.fill")
+                    .font(.system(size: 18, weight: .semibold))
+                
+                Text("Find Best Route")
+                    .font(.system(size: 18, weight: .semibold))
+            }
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .frame(height: 56) // Larger touch target
+            .background(
+                LinearGradient(
+                    gradient: Gradient(colors: [primaryGreen, primaryGreen.opacity(0.8)]),
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .cornerRadius(16)
+            .shadow(color: primaryGreen.opacity(0.3), radius: 8, x: 0, y: 4)
+        }
+        .disabled(!canOptimizeRoute)
+        .opacity(canOptimizeRoute ? 1.0 : 0.6)
+        .scaleEffect(canOptimizeRoute ? 1.0 : 0.98)
+        .animation(.easeInOut(duration: 0.2), value: canOptimizeRoute)
     }
     
     // MARK: - Helper Functions
     
+    private func handleStartLocationSelected(_ place: GMSPlace) {
+        print("🏠 Selected start: \(place.formattedAddress ?? "")")
+        
+        // Add haptic feedback
+        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+        impactFeedback.impactOccurred()
+        
+        // Auto-update end location if round trip is enabled
+        if isRoundTrip {
+            endLocation = startLocation
+        }
+    }
+    
+    private func handleEndLocationSelected(_ place: GMSPlace) {
+        print("🏠 Selected end: \(place.formattedAddress ?? "")")
+        
+        // Add haptic feedback
+        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+        impactFeedback.impactOccurred()
+        
+        if !isRoundTrip {
+            savedEndLocation = endLocation
+        }
+    }
+    
     private func useCurrentLocationForStart() {
-        if let location = locationManager.location {
-            // For now, just use coordinates - later we'll reverse geocode to address
-            let locationString = "\(location.coordinate.latitude), \(location.coordinate.longitude)"
-            startLocation = locationString
-            if isRoundTrip {
-                endLocation = locationString
-            }
+        guard let location = locationManager.location else { return }
+        
+        // Add haptic feedback
+        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+        impactFeedback.impactOccurred()
+        
+        // For now, use coordinates - later we'll reverse geocode
+        let locationString = "\(location.coordinate.latitude), \(location.coordinate.longitude)"
+        startLocation = locationString
+        
+        if isRoundTrip {
+            endLocation = locationString
         }
     }
     
     private func addStop() {
-        stops.append("")
+        // Add haptic feedback
+        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+        impactFeedback.impactOccurred()
+        
+        withAnimation(.easeInOut(duration: 0.3)) {
+            stops.append("")
+        }
     }
     
     private func removeStop(at index: Int) {
-        stops.remove(at: index)
+        // Add haptic feedback
+        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+        impactFeedback.impactOccurred()
+        
+        let _ = withAnimation(.easeInOut(duration: 0.3)) {
+            stops.remove(at: index)
+        }
+    }
+    
+    private func handleRoundTripToggle(_ newValue: Bool) {
+        // Add haptic feedback
+        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+        impactFeedback.impactOccurred()
+        
+        if newValue {
+            // Save current end location and set to start location
+            savedEndLocation = endLocation
+            endLocation = startLocation
+        } else {
+            // Restore previous end location
+            endLocation = savedEndLocation
+        }
     }
     
     private var canOptimizeRoute: Bool {
@@ -221,7 +397,5 @@ struct RouteInputView: View {
 }
 
 #Preview {
-    NavigationView {
-        RouteInputView(locationManager: LocationManager())
-    }
+    RouteInputView(locationManager: LocationManager())
 }

@@ -2,7 +2,7 @@
 //  ContentView.swift
 //  DriveLess
 //
-//  Created by Paul Soni on 6/19/25.
+//  Clean home screen with sign-in only options
 //
 
 import SwiftUI
@@ -12,139 +12,164 @@ struct ContentView: View {
     // Create an instance of our LocationManager
     @StateObject private var locationManager = LocationManager()
     
-    // State for navigation
-    @State private var showRouteInput = false
+    // MARK: - Color Theme (Earthy)
+    private let primaryGreen = Color(red: 0.2, green: 0.4, blue: 0.2) // Dark forest green
+    private let accentBrown = Color(red: 0.4, green: 0.3, blue: 0.2) // Rich brown
+    private let lightGreen = Color(red: 0.7, green: 0.8, blue: 0.7) // Soft green
     
     var body: some View {
         NavigationView {
-            VStack(spacing: 20) {
-                // App Header
-                VStack {
-                    Text("DriveLess")
-                        .font(.largeTitle)
-                        .fontWeight(.bold)
-                        .foregroundColor(.green)
-                    
-                    Text("Drive Less, Save Time")
-                        .font(.subheadline)
-                        .foregroundColor(.gray)
-                }
-                .padding(.top)
+            VStack(spacing: 0) {
                 
-                Spacer()
-                
-                // Location Section
-                VStack(spacing: 15) {
-                    Image(systemName: "location.circle.fill")
-                        .font(.system(size: 60))
-                        .foregroundColor(.blue)
+                // MARK: - Hero Section
+                VStack(spacing: 32) {
+                    Spacer()
                     
-                    Text("Get Your Location")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-                    
-                    // Show current location if available
-                    if let location = locationManager.location {
-                        VStack(spacing: 5) {
-                            Text("Current Location:")
-                                .font(.headline)
-                                .foregroundColor(.green)
-                            
-                            Text("Lat: \(location.coordinate.latitude, specifier: "%.4f")")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            
-                            Text("Lng: \(location.coordinate.longitude, specifier: "%.4f")")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                        .padding()
-                        .background(Color.green.opacity(0.1))
-                        .cornerRadius(10)
-                    }
-                    
-                    // Show error message if any
-                    if let errorMessage = locationManager.errorMessage {
-                        Text(errorMessage)
-                            .font(.caption)
-                            .foregroundColor(.red)
-                            .multilineTextAlignment(.center)
-                            .padding()
-                    }
-                    
-                    // Location button with debug logging
-                    Button(action: {
-                        print("Button tapped! Authorization status: \(locationManager.authorizationStatus)")
+                    // App Logo/Title
+                    VStack(spacing: 16) {
+                        // Logo placeholder (we'll add the actual logo later)
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [primaryGreen, lightGreen]),
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 100, height: 100)
+                            .overlay(
+                                Image(systemName: "map.fill")
+                                    .font(.system(size: 42, weight: .bold))
+                                    .foregroundColor(.white)
+                            )
                         
-                        if locationManager.authorizationStatus == .notDetermined {
-                            print("Requesting location permission...")
-                            locationManager.requestLocationPermission()
-                        } else {
-                            print("Getting current location...")
-                            locationManager.getCurrentLocation()
-                        }
-                    }) {
-                        HStack {
-                            if locationManager.isLoading {
-                                ProgressView()
-                                    .scaleEffect(0.8)
-                                Text("Getting Location...")
-                            } else {
-                                Image(systemName: "location.fill")
-                                Text(locationButtonText)
+                        Text("DriveLess")
+                            .font(.system(size: 42, weight: .bold))
+                            .foregroundColor(primaryGreen)
+                        
+                        Text("Drive Less, Save Time")
+                            .font(.system(size: 20, weight: .medium))
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    Spacer()
+                    
+                    // Features Preview (minimized - no sub-text)
+                    VStack(spacing: 20) {
+                        featureRow(
+                            icon: "map.circle.fill",
+                            title: "Smart Route Planning"
+                        )
+                        
+                        featureRow(
+                            icon: "clock.fill",
+                            title: "Real-Time Traffic"
+                        )
+                        
+                        featureRow(
+                            icon: "location.circle.fill",
+                            title: "Save Time & Fuel"
+                        )
+                    }
+                    .padding(.horizontal, 40)
+                    
+                    Spacer()
+                }
+                
+                // MARK: - Sign-In Section (Only Options)
+                VStack(spacing: 20) {
+                    
+                    Text("Sign in to start planning routes")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundColor(.primary)
+                        .multilineTextAlignment(.center)
+                    
+                    VStack(spacing: 16) {
+                        // Apple Sign-In (Primary)
+                        NavigationLink(destination: RouteInputView(locationManager: locationManager)) {
+                            HStack(spacing: 12) {
+                                Image(systemName: "applelogo")
+                                    .font(.system(size: 18, weight: .medium))
+                                
+                                Text("Continue with Apple")
+                                    .font(.system(size: 18, weight: .semibold))
                             }
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 56)
+                            .background(.black)
+                            .cornerRadius(16)
+                            .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
                         }
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.blue)
-                        .cornerRadius(10)
-                    }
-                    .disabled(locationManager.isLoading)
-                }
-                .padding()
-                
-                // Navigate to Route Planning Button
-                if locationManager.location != nil {
-                    NavigationLink(destination: RouteInputView(locationManager: locationManager)) {
-                        HStack {
-                            Image(systemName: "map.fill")
-                            Text("Start Route Planning")
+                        .simultaneousGesture(TapGesture().onEnded {
+                            // Add haptic feedback
+                            let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+                            impactFeedback.impactOccurred()
+                        })
+                        
+                        // Google Sign-In
+                        NavigationLink(destination: RouteInputView(locationManager: locationManager)) {
+                            HStack(spacing: 12) {
+                                Image(systemName: "globe")
+                                    .font(.system(size: 18, weight: .medium))
+                                
+                                Text("Continue with Google")
+                                    .font(.system(size: 18, weight: .semibold))
+                            }
+                            .foregroundColor(.black)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 56)
+                            .background(.white)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .stroke(Color(.systemGray4), lineWidth: 1)
+                            )
+                            .cornerRadius(16)
+                            .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
                         }
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.green)
-                        .cornerRadius(10)
+                        .simultaneousGesture(TapGesture().onEnded {
+                            // Add haptic feedback
+                            let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+                            impactFeedback.impactOccurred()
+                        })
                     }
-                    .padding(.horizontal)
                 }
-                
-                Spacer()
-                
-                // Future sections placeholder (only show if no location yet)
-                if locationManager.location == nil {
-                    Text("Route optimization coming soon...")
-                        .font(.footnote)
-                        .foregroundColor(.gray)
-                        .padding(.bottom)
-                }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 50)
             }
-            .navigationBarHidden(true)
+            .background(
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        Color(.systemBackground),
+                        lightGreen.opacity(0.1)
+                    ]),
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+            .navigationBarHidden(true) // This hides the navigation bar completely
+        }
+        .onAppear {
+            // Silently request location permission
+            if locationManager.authorizationStatus == .notDetermined {
+                locationManager.requestLocationPermission()
+            }
         }
     }
     
-    // Computed property for button text based on authorization status
-    private var locationButtonText: String {
-        switch locationManager.authorizationStatus {
-        case .notDetermined:
-            return "Enable Location Access"
-        case .denied, .restricted:
-            return "Location Access Denied"
-        case .authorizedWhenInUse, .authorizedAlways:
-            return "Get My Location"
-        @unknown default:
-            return "Get Location"
+    // MARK: - Feature Row Component (Simplified)
+    private func featureRow(icon: String, title: String) -> some View {
+        HStack(spacing: 16) {
+            Image(systemName: icon)
+                .font(.system(size: 24, weight: .medium))
+                .foregroundColor(primaryGreen)
+                .frame(width: 32)
+            
+            Text(title)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(.primary)
+            
+            Spacer()
         }
     }
 }

@@ -15,6 +15,10 @@ struct DriveLessApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .onAppear {
+                    // Hide navigation bars globally while keeping swipe gestures
+                    UINavigationBar.appearance().isHidden = true
+                }
         }
     }
 }

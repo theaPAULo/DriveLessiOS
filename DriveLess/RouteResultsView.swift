@@ -6,6 +6,8 @@
 
 import SwiftUI
 import GoogleMaps
+import GooglePlaces  // <-- ADD THIS LINE
+
 
 struct RouteResultsView: View {
     let routeData: RouteData
