@@ -63,27 +63,16 @@ struct GoogleMapsView: UIViewRepresentable {
     }
     
     private func setupMarkersAndRoute(on mapView: GMSMapView) {
-        // Use real coordinates from the route data instead of hardcoded ones
-        var coordinates: [CLLocationCoordinate2D] = []
+        // Use real coordinates if available, otherwise fallback
+        let coordinates = routeData.routeCoordinates.isEmpty ?
+            getCoordinatesFromAddresses() : routeData.routeCoordinates
         
-        // TEMPORARILY: Use the real coordinates based on the actual addresses
-        // This will be replaced with proper coordinate storage later
-        for waypoint in routeData.waypoints {
-            // For now, extract coordinates based on known locations from logs
-            if waypoint.address.contains("Pop Mart") {
-                coordinates.append(CLLocationCoordinate2D(latitude: 32.9290218, longitude: -96.82003859999999))
-            } else if waypoint.address.contains("Houston Zoo") {
-                coordinates.append(CLLocationCoordinate2D(latitude: 29.7157813, longitude: -95.39032069999999))
-            } else if waypoint.address.contains("San Antonio International Airport") {
-                coordinates.append(CLLocationCoordinate2D(latitude: 29.5331282, longitude: -98.4705422))
-            } else {
-                // Fallback to center of Texas
-                coordinates.append(CLLocationCoordinate2D(latitude: 31.0, longitude: -97.0))
-            }
-        }
+        print("📍 Setting up markers with \(coordinates.count) coordinates")
         
         // Add markers for each waypoint with real coordinates
         for (index, waypoint) in routeData.waypoints.enumerated() {
+            guard index < coordinates.count else { continue }
+            
             let marker = GMSMarker()
             marker.position = coordinates[index]
             marker.icon = createMarkerIcon(number: index + 1, type: waypoint.type)
@@ -117,6 +106,14 @@ struct GoogleMapsView: UIViewRepresentable {
         
         // Add traffic toggle button
         addTrafficButton(to: mapView)
+    }
+
+    // Fallback function for when real coordinates aren't available
+    private func getCoordinatesFromAddresses() -> [CLLocationCoordinate2D] {
+        return routeData.waypoints.map { waypoint in
+            // Use the hardcoded logic as fallback
+            getCoordinateForLocation(waypoint.address)
+        }
     }
 
     // Helper function to get coordinates for major Texas cities

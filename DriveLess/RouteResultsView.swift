@@ -13,7 +13,12 @@ struct RouteResultsView: View {
     let routeData: RouteData
     @State private var isLoading = true
     @State private var optimizedRoute: RouteData
-    @Environment(\.dismiss) private var dismiss // Add this line
+    @Environment(\.dismiss) private var dismiss
+    
+    // Add these new state variables for real route data
+    @State private var routeLegs: [RouteLeg] = []
+    @State private var routePolyline: String?
+    @State private var waypointOrder: [Int] = []
     
     init(routeData: RouteData) {
         self.routeData = routeData
@@ -74,7 +79,7 @@ struct RouteResultsView: View {
                 }
         )
         .onAppear {
-            simulateRouteCalculation()
+            calculateRealRoute()
         }
     }
     
@@ -130,30 +135,75 @@ struct RouteResultsView: View {
                 .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
         }
         
-    // Helper function to create map data from current route
+    // Helper function to create map data from current route with real coordinates
     private func createMapRouteData() -> MapRouteData {
-        // Create route stops with real coordinates if available
         var waypoints: [RouteStop] = []
+        var coordinates: [CLLocationCoordinate2D] = []
         
-        // We need to store the real coordinates somewhere accessible
-        // For now, let's enhance the RouteData structure to include coordinates
-        for stop in optimizedRoute.optimizedStops {
+        // If we have real route legs, use those coordinates
+        if !routeLegs.isEmpty {
+            print("📍 Using real coordinates from API response")
+            
+            // Add start location
+            let firstLeg = routeLegs.first!
             waypoints.append(RouteStop(
-                address: stop.address,
-                name: stop.name,
-                type: stop.type,
-                distance: stop.distance,
-                duration: stop.duration
+                address: firstLeg.start_address,
+                name: extractBusinessName(firstLeg.start_address),
+                type: .start,
+                distance: nil,
+                duration: nil
             ))
+            coordinates.append(CLLocationCoordinate2D(
+                latitude: firstLeg.start_location.lat,
+                longitude: firstLeg.start_location.lng
+            ))
+            
+            // Add intermediate stops
+            for (index, leg) in routeLegs.enumerated() {
+                if index < routeLegs.count - 1 { // Don't add final destination as stop
+                    waypoints.append(RouteStop(
+                        address: leg.end_address,
+                        name: extractBusinessName(leg.end_address),
+                        type: .stop,
+                        distance: leg.distance.text,
+                        duration: leg.duration.text
+                    ))
+                    coordinates.append(CLLocationCoordinate2D(
+                        latitude: leg.end_location.lat,
+                        longitude: leg.end_location.lng
+                    ))
+                }
+            }
+            
+            // Add end location
+            let lastLeg = routeLegs.last!
+            waypoints.append(RouteStop(
+                address: lastLeg.end_address,
+                name: extractBusinessName(lastLeg.end_address),
+                type: .end,
+                distance: nil,
+                duration: nil
+            ))
+            coordinates.append(CLLocationCoordinate2D(
+                latitude: lastLeg.end_location.lat,
+                longitude: lastLeg.end_location.lng
+            ))
+            
+            return MapRouteData(
+                waypoints: waypoints,
+                totalDistance: optimizedRoute.totalDistance,
+                estimatedTime: optimizedRoute.estimatedTime,
+                routeCoordinates: coordinates
+            )
+            
+        } else {
+            print("📍 No route legs available, using fallback")
+            // Fallback to mock data if no real route data
+            return MapRouteData.mockRouteData(from: optimizedRoute)
         }
-        
-        return MapRouteData(
-            waypoints: waypoints,
-            totalDistance: optimizedRoute.totalDistance,
-            estimatedTime: optimizedRoute.estimatedTime,
-            routeCoordinates: [] // We'll implement this next
-        )
     }
+    
+    
         
         // Helper function to convert optimized route back to RouteData format
         private func createRouteDataFromOptimized() -> RouteData {
@@ -270,50 +320,93 @@ struct RouteResultsView: View {
     
     // MARK: - Actions
     
-    private func simulateRouteCalculation() {
-        // Simulate API call delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-            // Create mock optimized route
-            var mockStops: [RouteStop] = []
-            
-            // Add start
-            mockStops.append(RouteStop(
-                address: routeData.startLocation,
-                name: extractBusinessName(routeData.startLocation),
-                type: .start,
-                distance: nil,
-                duration: nil
-            ))
-            
-            // Add stops
-            for (index, stop) in routeData.stops.enumerated() {
-                if !stop.isEmpty {
-                    mockStops.append(RouteStop(
-                        address: stop,
-                        name: extractBusinessName(stop),
-                        type: .stop,
-                        distance: "\(Float.random(in: 5...15).rounded(1)) mi",
-                        duration: "\(Int.random(in: 10...25)) min"
-                    ))
+    private func calculateRealRoute() {
+        print("🚀 Starting real route calculation...")
+        
+        // Use the real route calculator
+        RouteCalculator.calculateOptimizedRoute(
+            startLocation: routeData.startLocation,
+            endLocation: routeData.endLocation,
+            stops: routeData.stops,
+            considerTraffic: routeData.considerTraffic
+        ) { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let optimizedResult):
+                    print("✅ Route calculation successful!")
+                    
+                    // Update the UI with real data
+                    self.optimizedRoute.totalDistance = optimizedResult.totalDistance
+                    self.optimizedRoute.estimatedTime = optimizedResult.estimatedTime
+                    self.optimizedRoute.optimizedStops = optimizedResult.optimizedStops
+                    
+                    // Store additional route data for map display
+                    self.routeLegs = optimizedResult.legs
+                    self.routePolyline = optimizedResult.routePolyline
+                    self.waypointOrder = optimizedResult.waypointOrder
+                    
+                    // Extract real coordinates from the API response
+                    print("📍 Extracting real coordinates from API response...")
+                    for (index, leg) in optimizedResult.legs.enumerated() {
+                        print("📍 Leg \(index): Start(\(leg.start_location.lat), \(leg.start_location.lng)) -> End(\(leg.end_location.lat), \(leg.end_location.lng))")
+                    }
+                    
+                    withAnimation {
+                        self.isLoading = false
+                    }
+                    
+                case .failure(let error):
+                    print("❌ Route calculation failed: \(error.localizedDescription)")
+                    
+                    // Show error to user and fall back to mock data
+                    self.showErrorAndFallbackToMock(error: error)
                 }
             }
-            
-            // Add end
-            mockStops.append(RouteStop(
-                address: routeData.endLocation,
-                name: extractBusinessName(routeData.endLocation),
-                type: .end,
-                distance: "\(Float.random(in: 3...12).rounded(1)) mi",
-                duration: "\(Int.random(in: 8...20)) min"
-            ))
-            
-            optimizedRoute.optimizedStops = mockStops
-            optimizedRoute.totalDistance = "\(Float.random(in: 25...45).rounded(1)) miles"
-            optimizedRoute.estimatedTime = "\(Int.random(in: 45...75)) min"
-            
-            withAnimation {
-                isLoading = false
+        }
+    }
+
+    private func showErrorAndFallbackToMock(error: Error) {
+        // For now, just log the error and show mock data
+        // In production, you'd want to show an error message to the user
+        print("⚠️ Falling back to mock data due to error: \(error.localizedDescription)")
+        
+        // Create fallback mock data
+        var mockStops: [RouteStop] = []
+        
+        mockStops.append(RouteStop(
+            address: routeData.startLocation,
+            name: extractBusinessName(routeData.startLocation),
+            type: .start,
+            distance: nil,
+            duration: nil
+        ))
+        
+        for stop in routeData.stops {
+            if !stop.isEmpty {
+                mockStops.append(RouteStop(
+                    address: stop,
+                    name: extractBusinessName(stop),
+                    type: .stop,
+                    distance: "10.5 mi",
+                    duration: "15 min"
+                ))
             }
+        }
+        
+        mockStops.append(RouteStop(
+            address: routeData.endLocation,
+            name: extractBusinessName(routeData.endLocation),
+            type: .end,
+            distance: nil,
+            duration: nil
+        ))
+        
+        optimizedRoute.optimizedStops = mockStops
+        optimizedRoute.totalDistance = "25.0 miles"
+        optimizedRoute.estimatedTime = "45 min"
+        
+        withAnimation {
+            isLoading = false
         }
     }
     
