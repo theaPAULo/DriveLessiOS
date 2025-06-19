@@ -261,17 +261,16 @@ class PlacesClient: ObservableObject {
     }
     
     func getPlaceDetails(placeID: String, completion: @escaping (GMSPlace?) -> Void) {
-        // Enhanced place details with more fields using the new API
+        // Use the correct field names for iOS SDK
         let placeProperties = [
-            "placeID",
+            "place_id",
             "name",
-            "formattedAddress",
-            "coordinate",
-            "types",
-            "businessStatus"
+            "formatted_address",
+            "geometry/location",  // This is the correct path for coordinates
+            "types"
         ]
         
-        // Create the new-style request with correct parameter names
+        // Create the request with the correct field format
         let request = GMSFetchPlaceRequest(placeID: placeID, placeProperties: placeProperties, sessionToken: nil)
         
         // Use the updated API method
@@ -283,9 +282,21 @@ class PlacesClient: ObservableObject {
             }
             
             if let place = place {
-                print("✅ Got place details: \(place.formattedAddress ?? "Unknown")")
+                print("✅ Got place details: \(place.formattedAddress ?? "Unknown address")")
+                print("📍 Place name: \(place.name ?? "Unknown name")")
+                
+                // Check if coordinates are valid
+                let lat = place.coordinate.latitude
+                let lng = place.coordinate.longitude
+                if lat != -180.0 && lng != -180.0 && lat != 0.0 && lng != 0.0 {
+                    print("📍 Valid coordinates: \(lat), \(lng)")
+                } else {
+                    print("❌ Invalid coordinates received: \(lat), \(lng)")
+                }
+                
                 completion(place)
             } else {
+                print("❌ No place returned from API")
                 completion(nil)
             }
         }

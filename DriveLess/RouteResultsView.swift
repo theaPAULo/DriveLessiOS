@@ -13,6 +13,7 @@ struct RouteResultsView: View {
     let routeData: RouteData
     @State private var isLoading = true
     @State private var optimizedRoute: RouteData
+    @Environment(\.dismiss) private var dismiss // Add this line
     
     init(routeData: RouteData) {
         self.routeData = routeData
@@ -56,8 +57,22 @@ struct RouteResultsView: View {
                 }
             }
         }
-        .navigationBarHidden(true)
-
+        .navigationBarBackButtonHidden(true)
+        .gesture(
+            DragGesture()
+                .onEnded { gesture in
+                    // Check if this is a right swipe (going back)
+                    // Note: Using .width and .height instead of .x and .y
+                    if gesture.translation.width > 100 && abs(gesture.translation.height) < 50 {
+                        // Add haptic feedback
+                        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+                        impactFeedback.impactOccurred()
+                        
+                        // Navigate back to RouteInputView
+                        dismiss()
+                    }
+                }
+        )
         .onAppear {
             simulateRouteCalculation()
         }
@@ -109,11 +124,36 @@ struct RouteResultsView: View {
     
 
     private var interactiveMapView: some View {
-        SimpleMapView()
+        GoogleMapsView(routeData: createMapRouteData())
                 .frame(height: 350) // Optimal height for mobile viewing
                 .cornerRadius(12)
                 .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
         }
+        
+    // Helper function to create map data from current route
+    private func createMapRouteData() -> MapRouteData {
+        // Create route stops with real coordinates if available
+        var waypoints: [RouteStop] = []
+        
+        // We need to store the real coordinates somewhere accessible
+        // For now, let's enhance the RouteData structure to include coordinates
+        for stop in optimizedRoute.optimizedStops {
+            waypoints.append(RouteStop(
+                address: stop.address,
+                name: stop.name,
+                type: stop.type,
+                distance: stop.distance,
+                duration: stop.duration
+            ))
+        }
+        
+        return MapRouteData(
+            waypoints: waypoints,
+            totalDistance: optimizedRoute.totalDistance,
+            estimatedTime: optimizedRoute.estimatedTime,
+            routeCoordinates: [] // We'll implement this next
+        )
+    }
         
         // Helper function to convert optimized route back to RouteData format
         private func createRouteDataFromOptimized() -> RouteData {

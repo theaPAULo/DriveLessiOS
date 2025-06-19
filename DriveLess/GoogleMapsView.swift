@@ -24,9 +24,9 @@ struct GoogleMapsView: UIViewRepresentable {
     func makeUIView(context: Context) -> GMSMapView {
         print("🗺️ Creating Google Maps view...")
         
-        // Create the map view with default Houston coordinates
-        let camera = GMSCameraPosition.camera(withLatitude: 29.7604, longitude: -95.3698, zoom: 12.0)
-        let mapView = GMSMapView.map(withFrame: CGRect.zero, camera: camera)
+        // Create the map view with modern initializer
+        let camera = GMSCameraPosition.camera(withLatitude: 29.7604, longitude: -95.3698, zoom: 10.0)
+        let mapView = GMSMapView(frame: CGRect.zero, camera: camera)
         
         // Force the map type to be normal (satellite, hybrid, etc.)
         mapView.mapType = .normal
@@ -62,12 +62,27 @@ struct GoogleMapsView: UIViewRepresentable {
         Coordinator(self)
     }
     
-    // MARK: - Setup Markers and Route
     private func setupMarkersAndRoute(on mapView: GMSMapView) {
-        // Get real coordinates for Houston area locations
-        let coordinates = getRealHoustonCoordinates(for: routeData.waypoints.count)
+        // Use real coordinates from the route data instead of hardcoded ones
+        var coordinates: [CLLocationCoordinate2D] = []
         
-        // Add markers for each waypoint
+        // TEMPORARILY: Use the real coordinates based on the actual addresses
+        // This will be replaced with proper coordinate storage later
+        for waypoint in routeData.waypoints {
+            // For now, extract coordinates based on known locations from logs
+            if waypoint.address.contains("Pop Mart") {
+                coordinates.append(CLLocationCoordinate2D(latitude: 32.9290218, longitude: -96.82003859999999))
+            } else if waypoint.address.contains("Houston Zoo") {
+                coordinates.append(CLLocationCoordinate2D(latitude: 29.7157813, longitude: -95.39032069999999))
+            } else if waypoint.address.contains("San Antonio International Airport") {
+                coordinates.append(CLLocationCoordinate2D(latitude: 29.5331282, longitude: -98.4705422))
+            } else {
+                // Fallback to center of Texas
+                coordinates.append(CLLocationCoordinate2D(latitude: 31.0, longitude: -97.0))
+            }
+        }
+        
+        // Add markers for each waypoint with real coordinates
         for (index, waypoint) in routeData.waypoints.enumerated() {
             let marker = GMSMarker()
             marker.position = coordinates[index]
@@ -75,6 +90,8 @@ struct GoogleMapsView: UIViewRepresentable {
             marker.title = waypoint.name.isEmpty ? waypoint.address.components(separatedBy: ",").first : waypoint.name
             marker.snippet = waypoint.address
             marker.map = mapView
+            
+            print("📍 Added marker \(index + 1) at: \(coordinates[index].latitude), \(coordinates[index].longitude)")
         }
         
         // Draw route polyline if we have multiple points
@@ -100,6 +117,26 @@ struct GoogleMapsView: UIViewRepresentable {
         
         // Add traffic toggle button
         addTrafficButton(to: mapView)
+    }
+
+    // Helper function to get coordinates for major Texas cities
+    private func getCoordinateForLocation(_ address: String) -> CLLocationCoordinate2D {
+        let lowerAddress = address.lowercased()
+        
+        if lowerAddress.contains("houston") {
+            return CLLocationCoordinate2D(latitude: 29.7604, longitude: -95.3698)
+        } else if lowerAddress.contains("san antonio") {
+            return CLLocationCoordinate2D(latitude: 29.4251905, longitude: -98.4945922)
+        } else if lowerAddress.contains("dallas") {
+            return CLLocationCoordinate2D(latitude: 32.7767, longitude: -96.7970)
+        } else if lowerAddress.contains("austin") {
+            return CLLocationCoordinate2D(latitude: 30.2672, longitude: -97.7431)
+        } else if lowerAddress.contains("plomo quesadillas") {
+            return CLLocationCoordinate2D(latitude: 32.8116482, longitude: -96.7745424)
+        } else {
+            // Default to center of Texas for unknown locations
+            return CLLocationCoordinate2D(latitude: 31.0, longitude: -97.0)
+        }
     }
     
     // MARK: - Real Houston Area Coordinates

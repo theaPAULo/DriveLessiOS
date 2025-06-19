@@ -20,6 +20,8 @@ struct RouteInputView: View {
     
     // Reference to location manager
     @ObservedObject var locationManager: LocationManager
+    @Environment(\.presentationMode) var presentationMode // Add this line
+
     
     // MARK: - Color Theme (Earthy)
     private let primaryGreen = Color(red: 0.2, green: 0.4, blue: 0.2) // Dark forest green
@@ -27,7 +29,7 @@ struct RouteInputView: View {
     private let lightGreen = Color(red: 0.7, green: 0.8, blue: 0.7) // Soft green
     
     var body: some View {
-        NavigationStack {  // Changed from NavigationView
+        NavigationStack {
             ScrollView {
                 VStack(spacing: 24) {
                     
@@ -49,6 +51,22 @@ struct RouteInputView: View {
                 .padding(.top, 10)
             }
             .background(Color(.systemGroupedBackground))
+            .navigationBarBackButtonHidden(true) // Hide the back button
+            .gesture(
+                DragGesture()
+                    .onEnded { gesture in
+                        // Check if this is a right swipe (going back)
+                        if gesture.translation.width > 100 && abs(gesture.translation.height) < 50 {
+                            // Add haptic feedback for swipe back
+                            let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+                            impactFeedback.impactOccurred()
+                            print("⬅️ Swipe back detected on RouteInputView")
+                            
+                            // Actually navigate back
+                            presentationMode.wrappedValue.dismiss()
+                        }
+                    }
+            )
         }
     }
     
@@ -378,6 +396,7 @@ struct RouteInputView: View {
         }
     }
     
+    // MARK: - Computed Properties
     private var canOptimizeRoute: Bool {
         !startLocation.isEmpty &&
         !endLocation.isEmpty &&
