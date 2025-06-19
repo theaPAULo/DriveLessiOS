@@ -161,8 +161,8 @@ struct RouteInputView: View {
                         .opacity(isRoundTrip ? 0.6 : 1.0)
                     }
                     
-                    // Optimize Route Button
-                    Button(action: optimizeRoute) {
+                    // Optimize Route Button - Direct NavigationLink
+                    NavigationLink(destination: RouteResultsView(routeData: createRouteData())) {
                         HStack {
                             Image(systemName: "map")
                             Text("Optimize Route")
@@ -209,15 +209,14 @@ struct RouteInputView: View {
         stops.contains { !$0.isEmpty }
     }
     
-    private func optimizeRoute() {
-        print("🚗 Optimizing route...")
-        print("🚗 Start: \(startLocation)")
-        print("🚗 Stops: \(stops.filter { !$0.isEmpty })")
-        print("🚗 End: \(endLocation)")
-        print("🚗 Round Trip: \(isRoundTrip)")
-        print("🚗 Consider Traffic: \(considerTraffic)")
-        
-        // TODO: Navigate to route results view
+    private func createRouteData() -> RouteData {
+        return RouteData(
+            startLocation: startLocation,
+            endLocation: endLocation,
+            stops: stops.filter { !$0.isEmpty },
+            isRoundTrip: isRoundTrip,
+            considerTraffic: considerTraffic
+        )
     }
 }
 
