@@ -109,7 +109,7 @@ struct RouteResultsView: View {
     
 
     private var interactiveMapView: some View {
-            GoogleMapsView(routeData: MapRouteData.mockRouteData(from: createRouteDataFromOptimized()))
+        SimpleMapView()
                 .frame(height: 350) // Optimal height for mobile viewing
                 .cornerRadius(12)
                 .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)

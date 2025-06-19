@@ -18,7 +18,7 @@ struct ContentView: View {
     private let lightGreen = Color(red: 0.7, green: 0.8, blue: 0.7) // Soft green
     
     var body: some View {
-        NavigationView {
+        NavigationStack {  // Changed from NavigationView
             VStack(spacing: 0) {
                 
                 // MARK: - Hero Section
@@ -147,7 +147,6 @@ struct ContentView: View {
                     endPoint: .bottom
                 )
             )
-            .navigationBarHidden(true) // This hides the navigation bar completely
         }
         .onAppear {
             // Silently request location permission

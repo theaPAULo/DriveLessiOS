@@ -27,7 +27,7 @@ struct RouteInputView: View {
     private let lightGreen = Color(red: 0.7, green: 0.8, blue: 0.7) // Soft green
     
     var body: some View {
-        NavigationView {
+        NavigationStack {  // Changed from NavigationView
             ScrollView {
                 VStack(spacing: 24) {
                     
@@ -49,7 +49,6 @@ struct RouteInputView: View {
                 .padding(.top, 10)
             }
             .background(Color(.systemGroupedBackground))
-            .navigationBarHidden(true)
         }
     }
     
