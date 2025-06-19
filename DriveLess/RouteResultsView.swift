@@ -225,18 +225,6 @@ struct RouteResultsView: View {
                     .cornerRadius(10)
                 }
             }
-            
-            Button(action: goBack) {
-                HStack {
-                    Image(systemName: "arrow.left")
-                    Text("Back to Stops")
-                }
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color.gray.opacity(0.2))
-                .foregroundColor(.primary)
-                .cornerRadius(10)
-            }
         }
     }
     

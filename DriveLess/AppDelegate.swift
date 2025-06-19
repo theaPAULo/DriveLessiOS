@@ -21,6 +21,13 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         
         print("🗺️ Google Maps SDK configured with API key: \(String(apiKey.prefix(10)))...")
         
+        // Test if SDK is working
+        if GMSServices.openSourceLicenseInfo() != nil {
+            print("✅ Google Maps SDK initialized successfully")
+        } else {
+            print("❌ Google Maps SDK failed to initialize")
+        }
+        
         return true
     }
 }

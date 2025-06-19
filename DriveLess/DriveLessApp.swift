@@ -2,8 +2,6 @@
 //  DriveLessApp.swift
 //  DriveLess
 //
-//  Created by Paul Soni on 6/19/25.
-//
 
 import SwiftUI
 
@@ -18,6 +16,10 @@ struct DriveLessApp: App {
                 .onAppear {
                     // Hide navigation bars globally while keeping swipe gestures
                     UINavigationBar.appearance().isHidden = true
+                    
+                    // Also hide the back button indicator
+                    UINavigationBar.appearance().backIndicatorImage = UIImage()
+                    UINavigationBar.appearance().backIndicatorTransitionMaskImage = UIImage()
                 }
         }
     }

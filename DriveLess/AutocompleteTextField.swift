@@ -261,21 +261,21 @@ class PlacesClient: ObservableObject {
     }
     
     func getPlaceDetails(placeID: String, completion: @escaping (GMSPlace?) -> Void) {
-        // Enhanced place details with more fields
-        let fields: GMSPlaceField = [
-            .placeID,
-            .name,
-            .formattedAddress,
-            .coordinate,
-            .types,
-            .businessStatus
+        // Enhanced place details with more fields using the new API
+        let placeProperties = [
+            "placeID",
+            "name",
+            "formattedAddress",
+            "coordinate",
+            "types",
+            "businessStatus"
         ]
         
-        client.fetchPlace(
-            fromPlaceID: placeID,
-            placeFields: fields,
-            sessionToken: nil
-        ) { (place, error) in
+        // Create the new-style request with correct parameter names
+        let request = GMSFetchPlaceRequest(placeID: placeID, placeProperties: placeProperties, sessionToken: nil)
+        
+        // Use the updated API method
+        client.fetchPlace(with: request) { (place, error) in
             if let error = error {
                 print("❌ Place details error: \(error.localizedDescription)")
                 completion(nil)
