@@ -43,8 +43,8 @@ struct RouteResultsView: View {
                         // Header Stats
                         routeStatsView
                         
-                        // Map Placeholder (we'll add Google Maps next)
-                        mapPlaceholderView
+                        // Google Maps View
+                        interactiveMapView
                         
                         // Route Order List
                         routeOrderView
@@ -56,8 +56,8 @@ struct RouteResultsView: View {
                 }
             }
         }
-        .navigationTitle("Quickest Route")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarHidden(true)
+
         .onAppear {
             simulateRouteCalculation()
         }
@@ -107,24 +107,29 @@ struct RouteResultsView: View {
         }
     }
     
-    private var mapPlaceholderView: some View {
-        RoundedRectangle(cornerRadius: 10)
-            .fill(Color.gray.opacity(0.3))
-            .frame(height: 300)
-            .overlay(
-                VStack {
-                    Image(systemName: "map")
-                        .font(.system(size: 50))
-                        .foregroundColor(.gray)
-                    Text("Interactive Map")
-                        .font(.headline)
-                        .foregroundColor(.gray)
-                    Text("Coming next...")
-                        .font(.caption)
-                        .foregroundColor(.gray)
-                }
+
+    private var interactiveMapView: some View {
+            GoogleMapsView(routeData: MapRouteData.mockRouteData(from: createRouteDataFromOptimized()))
+                .frame(height: 350) // Optimal height for mobile viewing
+                .cornerRadius(12)
+                .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+        }
+        
+        // Helper function to convert optimized route back to RouteData format
+        private func createRouteDataFromOptimized() -> RouteData {
+            // Extract addresses from optimized route
+            let startLocation = optimizedRoute.optimizedStops.first?.address ?? ""
+            let endLocation = optimizedRoute.optimizedStops.last?.address ?? ""
+            let stops = Array(optimizedRoute.optimizedStops.dropFirst().dropLast()).map { $0.address }
+            
+            return RouteData(
+                startLocation: startLocation,
+                endLocation: endLocation,
+                stops: stops,
+                isRoundTrip: false, // We'll enhance this later
+                considerTraffic: true
             )
-    }
+        }
     
     private var routeOrderView: some View {
         VStack(alignment: .leading, spacing: 0) {
