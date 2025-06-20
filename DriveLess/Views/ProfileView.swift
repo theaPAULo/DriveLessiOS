@@ -1,0 +1,275 @@
+//
+//  ProfileView.swift
+//  DriveLess
+//
+//  User profile, settings, and route history
+//
+
+import SwiftUI
+
+struct ProfileView: View {
+    // MARK: - Color Theme (Earthy - matching app theme)
+    private let primaryGreen = Color(red: 0.2, green: 0.4, blue: 0.2) // Dark forest green
+    private let accentBrown = Color(red: 0.4, green: 0.3, blue: 0.2) // Rich brown
+    private let lightGreen = Color(red: 0.7, green: 0.8, blue: 0.7) // Soft green
+    
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                
+                // MARK: - Header Section
+                headerSection
+                
+                // MARK: - Quick Stats Card
+                quickStatsCard
+                
+                // MARK: - Menu Options
+                menuOptionsSection
+                
+                Spacer(minLength: 20)
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 10)
+        }
+        .background(Color(.systemGroupedBackground))
+        .navigationTitle("Profile")
+        .navigationBarTitleDisplayMode(.large)
+        .navigationBarBackButtonHidden(true)
+    }
+    
+    // MARK: - Header Section
+    private var headerSection: some View {
+        VStack(spacing: 16) {
+            // Profile Avatar Placeholder
+            Circle()
+                .fill(
+                    LinearGradient(
+                        gradient: Gradient(colors: [primaryGreen, lightGreen]),
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .frame(width: 80, height: 80)
+                .overlay(
+                    Image(systemName: "person.fill")
+                        .font(.system(size: 32, weight: .medium))
+                        .foregroundColor(.white)
+                )
+            
+            VStack(spacing: 4) {
+                Text("Welcome Back!")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.primary)
+                
+                Text("Sign in to save routes and track history")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            
+            // Sign In Button (placeholder for now)
+            Button(action: {
+                // TODO: Implement authentication
+                print("🔐 Sign in button tapped")
+            }) {
+                HStack {
+                    Image(systemName: "person.circle")
+                        .font(.system(size: 16, weight: .medium))
+                    Text("Sign In")
+                        .font(.system(size: 16, weight: .semibold))
+                }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 44)
+                .background(primaryGreen)
+                .cornerRadius(12)
+            }
+        }
+        .padding(.vertical, 20)
+    }
+    
+    // MARK: - Quick Stats Card
+    private var quickStatsCard: some View {
+        VStack(spacing: 16) {
+            HStack {
+                Image(systemName: "chart.bar.fill")
+                    .foregroundColor(primaryGreen)
+                Text("Your Stats")
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                Spacer()
+            }
+            
+            HStack(spacing: 20) {
+                statItem(
+                    icon: "map.fill",
+                    title: "Routes",
+                    value: "0",
+                    subtitle: "Optimized"
+                )
+                
+                Divider()
+                    .frame(height: 40)
+                
+                statItem(
+                    icon: "clock.fill",
+                    title: "Time Saved",
+                    value: "0h",
+                    subtitle: "Est. total"
+                )
+                
+                Divider()
+                    .frame(height: 40)
+                
+                statItem(
+                    icon: "leaf.fill",
+                    title: "Miles Saved",
+                    value: "0.0",
+                    subtitle: "Efficient routes"
+                )
+            }
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.systemBackground))
+                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+        )
+    }
+    
+    // MARK: - Menu Options Section
+    private var menuOptionsSection: some View {
+        VStack(spacing: 0) {
+            
+            menuItem(
+                icon: "clock.arrow.circlepath",
+                title: "Route History",
+                subtitle: "View your recent routes",
+                action: {
+                    print("📋 Route history tapped")
+                }
+            )
+            
+            Divider()
+                .padding(.leading, 50)
+            
+            menuItem(
+                icon: "house.fill",
+                title: "Saved Locations",
+                subtitle: "Home, work, and favorites",
+                action: {
+                    print("🏠 Saved locations tapped")
+                }
+            )
+            
+            Divider()
+                .padding(.leading, 50)
+            
+            menuItem(
+                icon: "gearshape.fill",
+                title: "Settings",
+                subtitle: "Preferences and options",
+                action: {
+                    print("⚙️ Settings tapped")
+                }
+            )
+            
+            Divider()
+                .padding(.leading, 50)
+            
+            menuItem(
+                icon: "questionmark.circle.fill",
+                title: "Help & Support",
+                subtitle: "Contact us for assistance",
+                action: {
+                    print("❓ Help tapped")
+                }
+            )
+            
+            Divider()
+                .padding(.leading, 50)
+            
+            menuItem(
+                icon: "rectangle.portrait.and.arrow.right",
+                title: "Sign Out",
+                subtitle: "Return to login screen",
+                action: {
+                    // TODO: Implement proper logout with confirmation
+                    print("🚪 Sign out tapped")
+                }
+            )
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.systemBackground))
+                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+        )
+    }
+    
+    // MARK: - Helper Components
+    
+    private func statItem(icon: String, title: String, value: String, subtitle: String) -> some View {
+        VStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: 20))
+                .foregroundColor(primaryGreen)
+            
+            Text(value)
+                .font(.title2)
+                .fontWeight(.bold)
+                .foregroundColor(.primary)
+            
+            VStack(spacing: 2) {
+                Text(title)
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundColor(.primary)
+                
+                Text(subtitle)
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+    
+    private func menuItem(icon: String, title: String, subtitle: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 16) {
+                Image(systemName: icon)
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundColor(primaryGreen)
+                    .frame(width: 24)
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.primary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    
+                    Text(subtitle)
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                
+                Spacer()
+                
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.secondary)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+            .contentShape(Rectangle()) // Makes entire area tappable
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+#Preview {
+    NavigationView {
+        ProfileView()
+    }
+}

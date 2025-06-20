@@ -256,13 +256,11 @@ struct RouteResultsView: View {
                             .fontWeight(.medium)
                             .lineLimit(1)
                         
-                        // Subtitle: Full address (only show if different from display name)
-                        if stop.displayAddress != stop.displayName {
-                            Text(stop.displayAddress)
-                                .font(.caption)
-                                .foregroundColor(.gray)
-                                .lineLimit(2)
-                        }
+                        // Subtitle: Always show the full address
+                        Text(stop.displayAddress)
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                            .lineLimit(2)
                         
                         // Distance and duration info
                         if let distance = stop.distance, let duration = stop.duration {

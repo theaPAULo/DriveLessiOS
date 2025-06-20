@@ -86,7 +86,7 @@ struct ContentView: View {
                     
                     VStack(spacing: 16) {
                         // Apple Sign-In (Primary)
-                        NavigationLink(destination: RouteInputView(locationManager: locationManager)) {
+                        NavigationLink(destination: MainTabView(locationManager: locationManager)) {
                             HStack(spacing: 12) {
                                 Image(systemName: "applelogo")
                                     .font(.system(size: 18, weight: .medium))
@@ -108,7 +108,7 @@ struct ContentView: View {
                         })
                         
                         // Google Sign-In
-                        NavigationLink(destination: RouteInputView(locationManager: locationManager)) {
+                        NavigationLink(destination: MainTabView(locationManager: locationManager)) {
                             HStack(spacing: 12) {
                                 Image(systemName: "globe")
                                     .font(.system(size: 18, weight: .medium))
