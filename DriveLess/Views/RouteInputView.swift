@@ -78,6 +78,112 @@ struct RouteInputView: View {
         }
     }
     
+    // MARK: - Actions and Handlers
+        
+        private func handleStartLocationSelected(_ place: GMSPlace) {
+            // Extract both business name and full address
+            let businessName = place.name ?? ""
+            let fullAddress = place.formattedAddress ?? ""
+            
+            print("🏠 Selected start - Name: '\(businessName)', Address: '\(fullAddress)'")
+            
+            // Store the full address for API calls (this is what fixes the NOT_FOUND error)
+            if !fullAddress.isEmpty {
+                startLocation = fullAddress  // For API calls
+                print("✅ Using full address for API: '\(fullAddress)'")
+            } else if !businessName.isEmpty {
+                startLocation = businessName  // Fallback
+                print("⚠️ Using business name as fallback: '\(businessName)'")
+            }
+            
+            // Store the business name for display (this is what shows in the UI)
+            if !businessName.isEmpty {
+                startLocationDisplayName = businessName  // For display
+                print("✅ Using business name for display: '\(businessName)'")
+            } else {
+                startLocationDisplayName = fullAddress  // Fallback to address
+                print("ℹ️ Using address for display (no business name)")
+            }
+            
+            // Add haptic feedback
+            let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+            impactFeedback.impactOccurred()
+            
+            // Auto-update end location if round trip is enabled
+            if isRoundTrip {
+                endLocation = startLocation
+                endLocationDisplayName = startLocationDisplayName
+            }
+        }
+        
+        private func handleEndLocationSelected(_ place: GMSPlace) {
+            // Extract both business name and full address
+            let businessName = place.name ?? ""
+            let fullAddress = place.formattedAddress ?? ""
+            
+            print("🏠 Selected end - Name: '\(businessName)', Address: '\(fullAddress)'")
+            
+            // Store the full address for API calls
+            if !fullAddress.isEmpty {
+                endLocation = fullAddress  // For API calls
+                print("✅ Using full address for API: '\(fullAddress)'")
+            } else if !businessName.isEmpty {
+                endLocation = businessName  // Fallback
+                print("⚠️ Using business name as fallback: '\(businessName)'")
+            }
+            
+            // Store the business name for display
+            if !businessName.isEmpty {
+                endLocationDisplayName = businessName  // For display
+                print("✅ Using business name for display: '\(businessName)'")
+            } else {
+                endLocationDisplayName = fullAddress  // Fallback to address
+                print("ℹ️ Using address for display (no business name)")
+            }
+            
+            // Add haptic feedback
+            let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+            impactFeedback.impactOccurred()
+            
+            if !isRoundTrip {
+                savedEndLocation = endLocation
+            }
+        }
+        
+        private func handleStopLocationSelected(_ place: GMSPlace, at index: Int) {
+            // Extract both business name and full address
+            let businessName = place.name ?? ""
+            let fullAddress = place.formattedAddress ?? ""
+            
+            print("🏠 Selected stop \(index) - Name: '\(businessName)', Address: '\(fullAddress)'")
+            
+            // Ensure stops arrays are the right size
+            while stops.count <= index {
+                stops.append("")
+            }
+            while stopDisplayNames.count <= index {
+                stopDisplayNames.append("")
+            }
+            
+            // Store the full address for API calls
+            if !fullAddress.isEmpty {
+                stops[index] = fullAddress  // For API calls
+                print("✅ Using full address for API: '\(fullAddress)'")
+            } else if !businessName.isEmpty {
+                stops[index] = businessName  // Fallback
+                print("⚠️ Using business name as fallback: '\(businessName)'")
+            }
+            
+            // Store the business name for display
+            if !businessName.isEmpty {
+                stopDisplayNames[index] = businessName  // For display
+                print("✅ Using business name for display: '\(businessName)'")
+            } else {
+                stopDisplayNames[index] = fullAddress  // Fallback to address
+                print("ℹ️ Using address for display (no business name)")
+            }
+        }
+    
     // MARK: - Route Input Card
     private var routeInputCard: some View {
         VStack(spacing: 20) {
@@ -299,73 +405,6 @@ struct RouteInputView: View {
         .animation(.easeInOut(duration: 0.2), value: canOptimizeRoute)
     }
     
-    private func handleEndLocationSelected(_ place: GMSPlace) {
-        // Extract both business name and full address
-        let businessName = place.name ?? ""
-        let fullAddress = place.formattedAddress ?? ""
-        
-        print("🏠 Selected end - Name: '\(businessName)', Address: '\(fullAddress)'")
-        
-        // Store the full address for API calls
-        if !fullAddress.isEmpty {
-            endLocation = fullAddress  // For API calls
-            print("✅ Using full address for API: '\(fullAddress)'")
-        } else if !businessName.isEmpty {
-            endLocation = businessName  // Fallback
-            print("⚠️ Using business name as fallback: '\(businessName)'")
-        }
-        
-        // Store the business name for display
-        if !businessName.isEmpty {
-            endLocationDisplayName = businessName  // For display
-            print("✅ Using business name for display: '\(businessName)'")
-        } else {
-            endLocationDisplayName = fullAddress  // Fallback to address
-            print("ℹ️ Using address for display (no business name)")
-        }
-        
-        // Add haptic feedback
-        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-        impactFeedback.impactOccurred()
-        
-        if !isRoundTrip {
-            savedEndLocation = endLocation
-        }
-    }
-
-    private func handleStopLocationSelected(_ place: GMSPlace, at index: Int) {
-        // Extract both business name and full address
-        let businessName = place.name ?? ""
-        let fullAddress = place.formattedAddress ?? ""
-        
-        print("🏠 Selected stop \(index) - Name: '\(businessName)', Address: '\(fullAddress)'")
-        
-        // Ensure stops arrays are the right size
-        while stops.count <= index {
-            stops.append("")
-        }
-        while stopDisplayNames.count <= index {
-            stopDisplayNames.append("")
-        }
-        
-        // Store the full address for API calls
-        if !fullAddress.isEmpty {
-            stops[index] = fullAddress  // For API calls
-            print("✅ Using full address for API: '\(fullAddress)'")
-        } else if !businessName.isEmpty {
-            stops[index] = businessName  // Fallback
-            print("⚠️ Using business name as fallback: '\(businessName)'")
-        }
-        
-        // Store the business name for display
-        if !businessName.isEmpty {
-            stopDisplayNames[index] = businessName  // For display
-            print("✅ Using business name for display: '\(businessName)'")
-        } else {
-            stopDisplayNames[index] = fullAddress  // Fallback to address
-            print("ℹ️ Using address for display (no business name)")
-        }
-    }
     
     private func useCurrentLocationForStart() {
         guard let location = locationManager.location else { return }
@@ -390,6 +429,7 @@ struct RouteInputView: View {
         
         withAnimation(.easeInOut(duration: 0.3)) {
             stops.append("")
+            stopDisplayNames.append("") // Keep parallel arrays in sync
         }
     }
     
@@ -398,8 +438,12 @@ struct RouteInputView: View {
         let impactFeedback = UIImpactFeedbackGenerator(style: .light)
         impactFeedback.impactOccurred()
         
-        let _ = withAnimation(.easeInOut(duration: 0.3)) {
+        withAnimation(.easeInOut(duration: 0.3)) {
             stops.remove(at: index)
+            // Remove from display names array too, with bounds checking
+            if index < stopDisplayNames.count {
+                stopDisplayNames.remove(at: index)
+            }
         }
     }
     
@@ -412,9 +456,11 @@ struct RouteInputView: View {
             // Save current end location and set to start location
             savedEndLocation = endLocation
             endLocation = startLocation
+            endLocationDisplayName = startLocationDisplayName // Also sync the display name
         } else {
             // Restore previous end location
             endLocation = savedEndLocation
+            endLocationDisplayName = "" // Clear display name so user can re-enter
         }
     }
     
@@ -422,17 +468,61 @@ struct RouteInputView: View {
     private var canOptimizeRoute: Bool {
         !startLocation.isEmpty &&
         !endLocation.isEmpty &&
-        stops.contains { !$0.isEmpty }
+        stops.contains { !$0.isEmpty } // This checks the actual addresses for API calls
     }
     
     private func createRouteData() -> RouteData {
-        return RouteData(
+        // Create RouteData with full addresses for API calls
+        var routeData = RouteData(
             startLocation: startLocation,
             endLocation: endLocation,
             stops: stops.filter { !$0.isEmpty },
             isRoundTrip: isRoundTrip,
             considerTraffic: considerTraffic
         )
+        
+        // Pre-populate optimizedStops with business names for better display
+        // This preserves the business names the user selected before API processing
+        var preOptimizedStops: [RouteStop] = []
+        
+        // Add start location with business name
+        preOptimizedStops.append(RouteStop(
+            address: startLocation,
+            name: startLocationDisplayName.isEmpty ? "" : startLocationDisplayName, // Use business name
+            originalInput: startLocationDisplayName.isEmpty ? startLocation : startLocationDisplayName,
+            type: .start,
+            distance: nil,
+            duration: nil
+        ))
+        
+        // Add stops with business names
+        let validStops = stops.enumerated().filter { !$0.element.isEmpty }
+        for (index, stop) in validStops {
+            let displayName = index < stopDisplayNames.count ? stopDisplayNames[index] : ""
+            preOptimizedStops.append(RouteStop(
+                address: stop,
+                name: displayName.isEmpty ? "" : displayName, // Use business name
+                originalInput: displayName.isEmpty ? stop : displayName,
+                type: .stop,
+                distance: nil,
+                duration: nil
+            ))
+        }
+        
+        // Add end location with business name
+        preOptimizedStops.append(RouteStop(
+            address: endLocation,
+            name: endLocationDisplayName.isEmpty ? "" : endLocationDisplayName, // Use business name
+            originalInput: endLocationDisplayName.isEmpty ? endLocation : endLocationDisplayName,
+            type: .end,
+            distance: nil,
+            duration: nil
+        ))
+        
+        // Store the pre-optimized stops with business names
+        routeData.optimizedStops = preOptimizedStops
+        
+        return routeData
     }
 }
 

@@ -344,10 +344,34 @@ struct RouteResultsView: View {
                 case .success(let optimizedResult):
                     print("✅ Route calculation successful!")
                     
-                    // Update the UI with real data
+                    // Update the UI with real data, preserving business names from input
                     self.optimizedRoute.totalDistance = optimizedResult.totalDistance
                     self.optimizedRoute.estimatedTime = optimizedResult.estimatedTime
-                    self.optimizedRoute.optimizedStops = optimizedResult.optimizedStops
+
+                    // IMPORTANT: Merge API results with original business names
+                    // The API gives us accurate addresses and coordinates, but we want to keep
+                    // the business names that the user originally selected for better UX
+                    var mergedStops: [RouteStop] = []
+                    let originalStops = self.optimizedRoute.optimizedStops // These have the business names
+
+                    for (index, apiStop) in optimizedResult.optimizedStops.enumerated() {
+                        if index < originalStops.count {
+                            // Use business name from original input, but address from API
+                            mergedStops.append(RouteStop(
+                                address: apiStop.address,           // Accurate from API
+                                name: originalStops[index].name,    // Business name from user input
+                                originalInput: originalStops[index].originalInput, // Original user input
+                                type: apiStop.type,                 // Type from API
+                                distance: apiStop.distance,         // Distance from API
+                                duration: apiStop.duration          // Duration from API
+                            ))
+                        } else {
+                            // Fallback to API data if we don't have original data
+                            mergedStops.append(apiStop)
+                        }
+                    }
+
+                    self.optimizedRoute.optimizedStops = mergedStops
                     
                     // Store additional route data for map display
                     self.routeLegs = optimizedResult.legs
