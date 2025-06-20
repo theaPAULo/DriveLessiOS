@@ -26,6 +26,9 @@ extension SavedRoute {
     @NSManaged public var stops: String?
     @NSManaged public var totalDistance: String?
     @NSManaged public var waypointOrder: String?
+    @NSManaged public var stopDisplayNames: String?
+    @NSManaged public var endLocationDisplayName: String?
+    @NSManaged public var startLocationDisplayName: String?
 
 }
 

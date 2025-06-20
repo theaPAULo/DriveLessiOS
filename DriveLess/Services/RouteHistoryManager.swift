@@ -37,6 +37,37 @@ class RouteHistoryManager: ObservableObject {
         savedRoute.estimatedTime = routeData.estimatedTime
         savedRoute.createdDate = Date()
         savedRoute.considerTraffic = routeData.considerTraffic
+
+        // ENHANCED: Store display names from optimized stops
+        if !routeData.optimizedStops.isEmpty {
+            // Extract display names from the optimized stops
+            let startStop = routeData.optimizedStops.first
+            let endStop = routeData.optimizedStops.last
+            
+            savedRoute.startLocationDisplayName = startStop?.name ?? extractBusinessName(routeData.startLocation)
+            savedRoute.endLocationDisplayName = endStop?.name ?? extractBusinessName(routeData.endLocation)
+            
+            // Save stop display names as JSON
+            let stopDisplayNames = routeData.optimizedStops
+                .dropFirst()  // Remove start
+                .dropLast()   // Remove end
+                .map { $0.name ?? extractBusinessName($0.address) }
+            
+            if !stopDisplayNames.isEmpty {
+                do {
+                    let displayNamesData = try JSONEncoder().encode(stopDisplayNames)
+                    savedRoute.stopDisplayNames = String(data: displayNamesData, encoding: .utf8)
+                } catch {
+                    print("❌ Failed to encode stop display names: \(error)")
+                }
+            }
+        } else {
+            // Fallback: extract from addresses
+            savedRoute.startLocationDisplayName = extractBusinessName(routeData.startLocation)
+            savedRoute.endLocationDisplayName = extractBusinessName(routeData.endLocation)
+        }
+
+        print("💾 Saved with display names: '\(savedRoute.startLocationDisplayName ?? "")' → '\(savedRoute.endLocationDisplayName ?? "")'")
         
         // Convert stops array to JSON string for storage
         if !routeData.stops.isEmpty {
@@ -107,6 +138,8 @@ class RouteHistoryManager: ObservableObject {
     
     // MARK: - Convert SavedRoute back to RouteData
     
+    // MARK: - Convert SavedRoute back to RouteData
+
     /// Converts a SavedRoute back to RouteData for reuse
     /// - Parameter savedRoute: The saved route to convert
     /// - Returns: RouteData object ready for route calculation
@@ -124,14 +157,69 @@ class RouteHistoryManager: ObservableObject {
             }
         }
         
+        // Decode stop display names from JSON
+        var stopDisplayNames: [String] = []
+        if let stopDisplayNamesString = savedRoute.stopDisplayNames {
+            if let displayNamesData = stopDisplayNamesString.data(using: .utf8),
+               let decodedDisplayNames = try? JSONDecoder().decode([String].self, from: displayNamesData) {
+                stopDisplayNames = decodedDisplayNames
+            }
+        }
+        
         // Create RouteData object
-        return RouteData(
+        var routeData = RouteData(
             startLocation: savedRoute.startLocation ?? "",
             endLocation: savedRoute.endLocation ?? "",
             stops: stops,
             isRoundTrip: false, // We'll enhance this later
             considerTraffic: savedRoute.considerTraffic
         )
+        
+        // ENHANCED: Create optimizedStops with saved display names
+        var optimizedStops: [RouteStop] = []
+        
+        // Add start location with saved display name
+        optimizedStops.append(RouteStop(
+            address: savedRoute.startLocation ?? "",
+            name: savedRoute.startLocationDisplayName ?? extractBusinessName(savedRoute.startLocation ?? ""),
+            originalInput: savedRoute.startLocationDisplayName ?? extractBusinessName(savedRoute.startLocation ?? ""),
+            type: .start,
+            distance: nil,
+            duration: nil
+        ))
+        
+        // Add stops with saved display names
+        for (index, stop) in stops.enumerated() {
+            let displayName = index < stopDisplayNames.count ?
+                stopDisplayNames[index] :
+                extractBusinessName(stop)
+            
+            optimizedStops.append(RouteStop(
+                address: stop,
+                name: displayName,
+                originalInput: displayName,
+                type: .stop,
+                distance: nil,
+                duration: nil
+            ))
+        }
+        
+        // Add end location with saved display name
+        optimizedStops.append(RouteStop(
+            address: savedRoute.endLocation ?? "",
+            name: savedRoute.endLocationDisplayName ?? extractBusinessName(savedRoute.endLocation ?? ""),
+            originalInput: savedRoute.endLocationDisplayName ?? extractBusinessName(savedRoute.endLocation ?? ""),
+            type: .end,
+            distance: nil,
+            duration: nil
+        ))
+        
+        // Set the optimized stops with display names
+        routeData.optimizedStops = optimizedStops
+        
+        print("🔄 Converted saved route with display names: '\(savedRoute.startLocationDisplayName ?? "")' → '\(savedRoute.endLocationDisplayName ?? "")'")
+        
+        return routeData
     }
     
     // MARK: - Helper Methods
@@ -176,5 +264,15 @@ class RouteHistoryManager: ObservableObject {
         }
         
         return "Unknown"
+    }
+    /// Extracts a business name from a full address (same logic as in RouteInputView)
+    /// - Parameter address: Full address string
+    /// - Returns: Business name or first part of address
+    private func extractBusinessName(_ address: String) -> String {
+        if address.contains(",") {
+            let firstPart = address.components(separatedBy: ",").first ?? ""
+            return firstPart.trimmingCharacters(in: .whitespaces)
+        }
+        return address
     }
 }

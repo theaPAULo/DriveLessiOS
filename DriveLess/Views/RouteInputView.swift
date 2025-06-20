@@ -533,8 +533,6 @@ struct RouteInputView: View {
         
         return routeData
     }
-    // MARK: - Load Saved Route
-
     /// Populates the form with data from a saved route
     /// - Parameter routeData: The route data to load into the form
     private func loadSavedRoute(_ routeData: RouteData) {
@@ -544,16 +542,38 @@ struct RouteInputView: View {
         let impactFeedback = UIImpactFeedbackGenerator(style: .light)
         impactFeedback.impactOccurred()
         
-        // Load basic route data
-        startLocation = routeData.startLocation
-        startLocationDisplayName = extractBusinessName(routeData.startLocation)
-        
-        endLocation = routeData.endLocation
-        endLocationDisplayName = extractBusinessName(routeData.endLocation)
-        
-        // Load stops
-        stops = routeData.stops.isEmpty ? [""] : routeData.stops
-        stopDisplayNames = routeData.stops.map { extractBusinessName($0) }
+        // ENHANCED: Use display names from optimizedStops if available
+        if !routeData.optimizedStops.isEmpty {
+            let startStop = routeData.optimizedStops.first!
+            let endStop = routeData.optimizedStops.last!
+            
+            // Load start location with saved display name
+            startLocation = startStop.address
+            startLocationDisplayName = startStop.name.isEmpty ? extractBusinessName(startStop.address) : startStop.name
+            
+            // Load end location with saved display name
+            endLocation = endStop.address
+            endLocationDisplayName = endStop.name.isEmpty ? extractBusinessName(endStop.address) : endStop.name
+            
+            // Load stops with saved display names
+            let stopRoutes = Array(routeData.optimizedStops.dropFirst().dropLast()) // Remove start and end
+            stops = stopRoutes.isEmpty ? [""] : stopRoutes.map { $0.address }
+            stopDisplayNames = stopRoutes.isEmpty ? [""] : stopRoutes.map { $0.name.isEmpty ? extractBusinessName($0.address) : $0.name }
+            
+            print("✅ Loaded with saved display names: '\(startLocationDisplayName)' → '\(endLocationDisplayName)'")
+        } else {
+            // Fallback to original logic
+            startLocation = routeData.startLocation
+            startLocationDisplayName = extractBusinessName(routeData.startLocation)
+            
+            endLocation = routeData.endLocation
+            endLocationDisplayName = extractBusinessName(routeData.endLocation)
+            
+            stops = routeData.stops.isEmpty ? [""] : routeData.stops
+            stopDisplayNames = routeData.stops.isEmpty ? [""] : routeData.stops.map { extractBusinessName($0) }
+            
+            print("✅ Loaded with extracted names: '\(startLocationDisplayName)' → '\(endLocationDisplayName)'")
+        }
         
         // Ensure we have at least one stop input
         if stops.isEmpty {
@@ -564,8 +584,6 @@ struct RouteInputView: View {
         // Load preferences
         considerTraffic = routeData.considerTraffic
         isRoundTrip = routeData.isRoundTrip
-        
-        print("✅ Route loaded successfully: \(startLocationDisplayName) → \(endLocationDisplayName)")
     }
 
     /// Extracts business name from full address for display
