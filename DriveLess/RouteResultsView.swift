@@ -193,7 +193,8 @@ struct RouteResultsView: View {
                 waypoints: waypoints,
                 totalDistance: optimizedRoute.totalDistance,
                 estimatedTime: optimizedRoute.estimatedTime,
-                routeCoordinates: coordinates
+                routeCoordinates: coordinates,
+                encodedPolyline: routePolyline // Pass the real polyline
             )
             
         } else {
