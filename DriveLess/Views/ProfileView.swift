@@ -16,6 +16,10 @@ struct ProfileView: View {
     @StateObject private var routeHistoryManager = RouteHistoryManager()
     @State private var savedRoutes: [SavedRoute] = []
     @State private var showingRouteHistory = false
+    
+    // ADD THESE LINES FOR SAVED ADDRESSES:
+    @StateObject private var savedAddressManager = SavedAddressManager()
+    @State private var showingAddressManager = false
 
     // MARK: - Color Theme (Earthy - matching app theme)
     private let primaryGreen = Color(red: 0.2, green: 0.4, blue: 0.2) // Dark forest green
@@ -56,6 +60,9 @@ struct ProfileView: View {
                     showingRouteHistory = false
                 }
             )
+        }
+        .sheet(isPresented: $showingAddressManager) {
+            SavedAddressesView(savedAddressManager: savedAddressManager)
         }
         .onAppear {
             loadRouteHistory()
@@ -226,7 +233,7 @@ struct ProfileView: View {
                 title: "Saved Locations",
                 subtitle: "Home, work, and favorites",
                 action: {
-                    print("🏠 Saved locations tapped")
+                    showingAddressManager = true
                 }
             )
             
