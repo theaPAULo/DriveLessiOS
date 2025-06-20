@@ -10,9 +10,14 @@ struct DriveLessApp: App {
     // Register AppDelegate
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     
+    // Core Data manager instance
+    let coreDataManager = CoreDataManager.shared
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environment(\.managedObjectContext, coreDataManager.viewContext)
+                .environmentObject(coreDataManager)
                 .onAppear {
                     // Hide navigation bars globally while keeping swipe gestures
                     UINavigationBar.appearance().isHidden = true

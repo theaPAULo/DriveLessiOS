@@ -6,9 +6,14 @@
 //
 
 import SwiftUI
+import CoreData  // <-- ADD THIS LINE
 
 struct ProfileView: View {
     @EnvironmentObject var authManager: AuthenticationManager
+    
+    @StateObject private var routeHistoryManager = RouteHistoryManager()
+    @State private var savedRoutes: [SavedRoute] = []
+    @State private var showingRouteHistory = false
 
     // MARK: - Color Theme (Earthy - matching app theme)
     private let primaryGreen = Color(red: 0.2, green: 0.4, blue: 0.2) // Dark forest green
@@ -37,6 +42,9 @@ struct ProfileView: View {
         .navigationTitle("Profile")
         .navigationBarTitleDisplayMode(.large)
         .navigationBarBackButtonHidden(true)
+        .onAppear {
+            loadRouteHistory()  // <-- ADD THIS LINE
+        }
     }
     
     private var headerSection: some View {
@@ -131,7 +139,7 @@ struct ProfileView: View {
                 statItem(
                     icon: "map.fill",
                     title: "Routes",
-                    value: "0",
+                    value: "\(savedRoutes.count)",  // <-- REAL DATA NOW
                     subtitle: "Optimized"
                 )
                 
@@ -140,20 +148,38 @@ struct ProfileView: View {
                 
                 statItem(
                     icon: "clock.fill",
-                    title: "Time Saved",
-                    value: "0h",
-                    subtitle: "Est. total"
+                    title: "Recent Route",
+                    value: savedRoutes.isEmpty ? "None" : timeAgo(savedRoutes.first?.createdDate),  // <-- REAL DATA
+                    subtitle: "Last used"
                 )
                 
                 Divider()
                     .frame(height: 40)
                 
                 statItem(
-                    icon: "leaf.fill",
-                    title: "Miles Saved",
-                    value: "0.0",
-                    subtitle: "Efficient routes"
+                    icon: "location.fill",
+                    title: "Locations",
+                    value: "\(uniqueLocationsCount)",  // <-- REAL DATA
+                    subtitle: "Visited"
                 )
+            }
+            
+            // ADD ROUTE HISTORY BUTTON
+            Button(action: {
+                showingRouteHistory = true
+            }) {
+                HStack {
+                    Image(systemName: "clock.arrow.circlepath")
+                        .font(.system(size: 16, weight: .medium))
+                    Text("View Route History")
+                        .font(.system(size: 16, weight: .semibold))
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+                .foregroundColor(primaryGreen)
+                .padding(.top, 12)
             }
         }
         .padding(20)
@@ -291,6 +317,41 @@ struct ProfileView: View {
             .contentShape(Rectangle()) // Makes entire area tappable
         }
         .buttonStyle(PlainButtonStyle())
+    }
+    
+    // MARK: - Computed Properties for Stats
+
+    /// Count of unique locations visited across all routes
+    private var uniqueLocationsCount: Int {
+        let allLocations = savedRoutes.flatMap { route in
+            var locations = [route.startLocation, route.endLocation].compactMap { $0 }
+            
+            // Add stops if they exist
+            if let stopsString = route.stops,
+               let stopsData = stopsString.data(using: .utf8),
+               let stops = try? JSONDecoder().decode([String].self, from: stopsData) {
+                locations.append(contentsOf: stops)
+            }
+            
+            return locations
+        }
+        
+        return Set(allLocations).count
+    }
+
+    /// Formats a date to show how long ago it was
+    private func timeAgo(_ date: Date?) -> String {
+        guard let date = date else { return "Never" }
+        
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .abbreviated
+        return formatter.localizedString(for: date, relativeTo: Date())
+    }
+
+    // MARK: - Lifecycle
+
+    private func loadRouteHistory() {
+        savedRoutes = routeHistoryManager.loadRouteHistory()
     }
 }
 

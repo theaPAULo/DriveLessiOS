@@ -7,7 +7,7 @@
 import SwiftUI
 import GoogleMaps
 import GooglePlaces  // <-- ADD THIS LINE
-
+import CoreData  // <-- ADD THIS LINE
 
 struct RouteResultsView: View {
     let routeData: RouteData
@@ -387,6 +387,11 @@ struct RouteResultsView: View {
                     withAnimation {
                         self.isLoading = false
                     }
+                    
+                    // 📚 AUTO-SAVE ROUTE TO HISTORY
+                    // Save the completed route to history for later reference
+                    let routeHistoryManager = RouteHistoryManager()
+                    routeHistoryManager.saveRoute(self.optimizedRoute)
                     
                 case .failure(let error):
                     print("❌ Route calculation failed: \(error.localizedDescription)")

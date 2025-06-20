@@ -13,6 +13,8 @@
 		E45EA6DD2E04718100C89EBE /* GooglePlaces in Frameworks */ = {isa = PBXBuildFile; productRef = E45EA6DC2E04718100C89EBE /* GooglePlaces */; };
 		E45EA6E02E04718E00C89EBE /* GoogleMaps in Frameworks */ = {isa = PBXBuildFile; productRef = E45EA6DF2E04718E00C89EBE /* GoogleMaps */; };
 		E49106D32E05CBAE00F1E96F /* AuthenticationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E49106D22E05CBAE00F1E96F /* AuthenticationServices.framework */; };
+		E4D553602E06049700ECFDAC /* SavedRoute+CoreDataClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4D5535E2E06049700ECFDAC /* SavedRoute+CoreDataClass.swift */; };
+		E4D553612E06049700ECFDAC /* SavedRoute+CoreDataProperties.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4D5535F2E06049700ECFDAC /* SavedRoute+CoreDataProperties.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -37,6 +39,8 @@
 		E4B4DB372E04657300992385 /* DriveLess.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DriveLess.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E4B4DB442E04657500992385 /* DriveLessTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DriveLessTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E4B4DB4E2E04657500992385 /* DriveLessUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DriveLessUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		E4D5535E2E06049700ECFDAC /* SavedRoute+CoreDataClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SavedRoute+CoreDataClass.swift"; sourceTree = "<group>"; };
+		E4D5535F2E06049700ECFDAC /* SavedRoute+CoreDataProperties.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SavedRoute+CoreDataProperties.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -112,6 +116,8 @@
 		E4B4DB2E2E04657300992385 = {
 			isa = PBXGroup;
 			children = (
+				E4D5535E2E06049700ECFDAC /* SavedRoute+CoreDataClass.swift */,
+				E4D5535F2E06049700ECFDAC /* SavedRoute+CoreDataProperties.swift */,
 				E4B4DB392E04657300992385 /* DriveLess */,
 				E4B4DB472E04657500992385 /* DriveLessTests */,
 				E4B4DB512E04657500992385 /* DriveLessUITests */,
@@ -285,6 +291,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E4D553602E06049700ECFDAC /* SavedRoute+CoreDataClass.swift in Sources */,
+				E4D553612E06049700ECFDAC /* SavedRoute+CoreDataProperties.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
