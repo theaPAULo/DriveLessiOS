@@ -172,14 +172,20 @@ struct InlineAutocompleteTextField: View {
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
         impactFeedback.impactOccurred()
         
-        text = prediction.fullText
+        // Use the primary text (business name) for display, but keep full text as backup
+        let displayText = prediction.primaryText.isEmpty ? prediction.fullText : prediction.primaryText
+        text = displayText
         showingSuggestions = false
         textFieldFocused = false // Dismiss keyboard
+        
+        print("🏪 Selected place: '\(prediction.primaryText)' at '\(prediction.fullText)'")
         
         // Fetch place details
         placesClient.getPlaceDetails(placeID: prediction.placeID) { place in
             if let place = place {
                 DispatchQueue.main.async {
+                    // Log the place details for debugging
+                    print("🏪 Place details - Name: '\(place.name ?? "No name")', Address: '\(place.formattedAddress ?? "No address")'")
                     self.onPlaceSelected(place)
                 }
             }

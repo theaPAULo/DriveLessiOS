@@ -17,6 +17,13 @@ import Foundation
 import GoogleMaps
 import CoreLocation
 
+// Add this struct after the imports
+struct OriginalRouteInputs {
+    let startLocation: String
+    let endLocation: String
+    let stops: [String]
+}
+
 class RouteCalculator: ObservableObject {
     
     // MARK: - Route Calculation
@@ -86,14 +93,21 @@ class RouteCalculator: ObservableObject {
             }
             
             // Parse the response
+            // Parse the response
             do {
                 let result = try JSONDecoder().decode(DirectionsResponse.self, from: data)
                 
-                if result.status == "OK", let route = result.routes.first {
+                if result.status == "OK", !result.routes.isEmpty {
                     print("✅ Route calculation successful!")
                     
                     // Process the route data
-                    let optimizedResult = processDirectionsResponse(result, considerTraffic: considerTraffic)
+                    // Process the route data - pass original inputs to preserve business names
+                    let originalInputs = OriginalRouteInputs(
+                        startLocation: startLocation,
+                        endLocation: endLocation,
+                        stops: stops
+                    )
+                    let optimizedResult = processDirectionsResponse(result, considerTraffic: considerTraffic, originalInputs: originalInputs)
                     completion(.success(optimizedResult))
                 } else {
                     print("❌ API returned error status: \(result.status)")
@@ -112,7 +126,8 @@ class RouteCalculator: ObservableObject {
     
     private static func processDirectionsResponse(
         _ response: DirectionsResponse,
-        considerTraffic: Bool
+        considerTraffic: Bool,
+        originalInputs: OriginalRouteInputs
     ) -> OptimizedRouteResult {
         
         guard let route = response.routes.first else {
@@ -153,33 +168,42 @@ class RouteCalculator: ObservableObject {
         // Create optimized stops in the correct order
         var optimizedStops: [RouteStop] = []
         
-        // Add start location
+        // Get waypoint order for later use
+        let routeWaypointOrder = route.waypoint_order ?? []
+                
+        // Add start location (preserve original business name)
         optimizedStops.append(RouteStop(
             address: legs.first?.start_address ?? "",
-            name: extractBusinessName(legs.first?.start_address ?? ""),
+            name: originalInputs.startLocation,  // Use original business name
+            originalInput: originalInputs.startLocation,
             type: .start,
             distance: nil,
             duration: nil
         ))
-        
-        // Add waypoints in optimized order
-        let waypointOrder = route.waypoint_order ?? []
+
+        // Add waypoints in optimized order (preserve original business names)
         for (index, leg) in legs.enumerated() {
             if index < legs.count - 1 { // Don't add the final destination as a stop
+                // Get the original stop name based on waypoint order
+                let waypointIndex = routeWaypointOrder.count > index ? routeWaypointOrder[index] : index
+                let originalStopName = waypointIndex < originalInputs.stops.count ? originalInputs.stops[waypointIndex] : leg.end_address
+                
                 optimizedStops.append(RouteStop(
                     address: leg.end_address,
-                    name: extractBusinessName(leg.end_address),
+                    name: originalStopName,  // Use original business name
+                    originalInput: originalStopName,
                     type: .stop,
                     distance: String(format: "%.1f mi", Double(leg.distance.value) / 1609.34),
                     duration: "\(leg.duration.value / 60) min"
                 ))
             }
         }
-        
-        // Add end location
+
+        // Add end location (preserve original business name)
         optimizedStops.append(RouteStop(
             address: legs.last?.end_address ?? "",
-            name: extractBusinessName(legs.last?.end_address ?? ""),
+            name: originalInputs.endLocation,  // Use original business name
+            originalInput: originalInputs.endLocation,
             type: .end,
             distance: nil,
             duration: nil
@@ -191,7 +215,7 @@ class RouteCalculator: ObservableObject {
             optimizedStops: optimizedStops,
             routePolyline: route.overview_polyline?.points,
             legs: legs,
-            waypointOrder: waypointOrder
+            waypointOrder: routeWaypointOrder
         )
     }
     

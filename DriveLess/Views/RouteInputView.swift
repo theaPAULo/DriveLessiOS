@@ -91,7 +91,7 @@ struct RouteInputView: View {
                 .disabled(true) // Will enable later
             }
             
-            Text("Plan your optimal route")
+            Text("Plan your route")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -106,7 +106,7 @@ struct RouteInputView: View {
             VStack(alignment: .leading, spacing: 8) {
                 InlineAutocompleteTextField(
                     text: $startLocation,
-                    placeholder: "Starting location",
+                    placeholder: "Start",
                     icon: "location.circle.fill",
                     iconColor: primaryGreen,
                     currentLocation: locationManager.location,
@@ -189,7 +189,20 @@ struct RouteInputView: View {
                         iconColor: Color(.systemBlue),
                         currentLocation: locationManager.location,
                         onPlaceSelected: { place in
-                            print("🏠 Selected stop: \(place.formattedAddress ?? "")")
+                            // Extract business name for stops too
+                            let businessName = place.name ?? ""
+                            let address = place.formattedAddress ?? ""
+                            
+                            print("🏠 Selected stop - Name: '\(businessName)', Address: '\(address)'")
+                            
+                            // Update the stop with business name if available
+                            if !businessName.isEmpty && businessName != address {
+                                stops[index] = businessName
+                                print("✅ Using business name for stop: '\(businessName)'")
+                            } else {
+                                stops[index] = address
+                                print("ℹ️ Using address for stop (no business name available)")
+                            }
                         }
                     )
                     
@@ -321,7 +334,21 @@ struct RouteInputView: View {
     // MARK: - Helper Functions
     
     private func handleStartLocationSelected(_ place: GMSPlace) {
-        print("🏠 Selected start: \(place.formattedAddress ?? "")")
+        // Extract business name if available, otherwise use address
+        let businessName = place.name ?? ""
+        let address = place.formattedAddress ?? ""
+        
+        print("🏠 Selected start - Name: '\(businessName)', Address: '\(address)'")
+        
+        // Store the business name in a way we can use later
+        // For now, we'll update the text field to show the business name
+        if !businessName.isEmpty && businessName != address {
+            startLocation = businessName
+            print("✅ Using business name: '\(businessName)'")
+        } else {
+            startLocation = address
+            print("ℹ️ Using address (no business name available)")
+        }
         
         // Add haptic feedback
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
@@ -332,9 +359,22 @@ struct RouteInputView: View {
             endLocation = startLocation
         }
     }
-    
+
     private func handleEndLocationSelected(_ place: GMSPlace) {
-        print("🏠 Selected end: \(place.formattedAddress ?? "")")
+        // Extract business name if available, otherwise use address
+        let businessName = place.name ?? ""
+        let address = place.formattedAddress ?? ""
+        
+        print("🏠 Selected end - Name: '\(businessName)', Address: '\(address)'")
+        
+        // Store the business name in a way we can use later
+        if !businessName.isEmpty && businessName != address {
+            endLocation = businessName
+            print("✅ Using business name: '\(businessName)'")
+        } else {
+            endLocation = address
+            print("ℹ️ Using address (no business name available)")
+        }
         
         // Add haptic feedback
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)

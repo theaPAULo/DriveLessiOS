@@ -202,13 +202,138 @@ struct GoogleMapsView: UIViewRepresentable {
         }
         
         // Fit camera to show all markers
+        // Fit camera to show all markers with proper bounds validation
         if coordinates.count > 1 {
-            var bounds = GMSCoordinateBounds()
-            coordinates.forEach { bounds = bounds.includingCoordinate($0) }
+            print("📍 Fitting camera to \(coordinates.count) coordinates")
             
-            let padding = UIEdgeInsets(top: 50, left: 50, bottom: 50, right: 50)
-            let camera = mapView.camera(for: bounds, insets: padding)
-            mapView.camera = camera ?? mapView.camera
+            // Validate coordinates before creating bounds
+            let validCoordinates = coordinates.filter { coordinate in
+                let isValid = coordinate.latitude != 0.0 &&
+                             coordinate.longitude != 0.0 &&
+                             coordinate.latitude >= -90.0 &&
+                             coordinate.latitude <= 90.0 &&
+                             coordinate.longitude >= -180.0 &&
+                             coordinate.longitude <= 180.0
+                if !isValid {
+                    print("⚠️ Invalid coordinate found: \(coordinate.latitude), \(coordinate.longitude)")
+                }
+                return isValid
+            }
+            
+            if validCoordinates.count > 1 {
+                // Log all coordinates for debugging
+                print("📍 Valid coordinates:")
+                for (index, coord) in validCoordinates.enumerated() {
+                    print("   \(index + 1): \(coord.latitude), \(coord.longitude)")
+                }
+                
+                // Calculate bounds manually for better control
+                let latitudes = validCoordinates.map { $0.latitude }
+                let longitudes = validCoordinates.map { $0.longitude }
+                
+                let minLat = latitudes.min()!
+                let maxLat = latitudes.max()!
+                let minLng = longitudes.min()!
+                let maxLng = longitudes.max()!
+                
+                print("📍 Calculated bounds: (\(minLat), \(minLng)) to (\(maxLat), \(maxLng))")
+                
+                // Calculate center point
+                let centerLat = (minLat + maxLat) / 2
+                let centerLng = (minLng + maxLng) / 2
+                let centerCoordinate = CLLocationCoordinate2D(latitude: centerLat, longitude: centerLng)
+                
+                print("📍 Center coordinate: \(centerLat), \(centerLng)")
+                
+                // Calculate span (difference between max and min)
+                let latSpan = maxLat - minLat
+                let lngSpan = maxLng - minLng
+                let maxSpan = max(latSpan, lngSpan)
+                
+                print("📍 Coordinate span: lat=\(latSpan), lng=\(lngSpan), max=\(maxSpan)")
+                
+                // Calculate appropriate zoom level based on span
+                // Zoom levels: 1=world, 5=continent, 10=city, 15=streets, 20=buildings
+                let zoom: Float
+                if maxSpan > 10.0 {
+                    zoom = 5.0  // Very wide area
+                } else if maxSpan > 1.0 {
+                    zoom = 8.0  // Large city area
+                } else if maxSpan > 0.1 {
+                    zoom = 12.0 // City district
+                } else if maxSpan > 0.01 {
+                    zoom = 15.0 // Neighborhood
+                } else {
+                    zoom = 17.0 // Street level
+                }
+                
+                print("📍 Calculated zoom level: \(zoom) for span: \(maxSpan)")
+                
+                // Create camera with calculated center and zoom
+                let calculatedCamera = GMSCameraPosition.camera(
+                    withTarget: centerCoordinate,
+                    zoom: zoom
+                )
+                
+                print("✅ Final camera - Target: \(calculatedCamera.target.latitude), \(calculatedCamera.target.longitude), Zoom: \(calculatedCamera.zoom)")
+                
+                // Animate to the new position
+                mapView.animate(to: calculatedCamera)
+                
+                // Add a slight delay then fine-tune with bounds if needed
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    // Create Google Maps bounds for fine-tuning
+                    let bounds = GMSCoordinateBounds()
+                    var boundsWithCoordinates = bounds
+                    validCoordinates.forEach { coordinate in
+                        boundsWithCoordinates = boundsWithCoordinates.includingCoordinate(coordinate)
+                    }
+                    
+                    // Apply bounds with padding for final adjustment
+                    let padding = UIEdgeInsets(top: 100, left: 80, bottom: 150, right: 80)
+                    let camera = mapView.camera(for: boundsWithCoordinates, insets: padding)
+                    
+                    if let finalCamera = camera {
+                        // Ensure zoom level is reasonable (between 10-18 for routes)
+                        let clampedZoom = max(10.0, min(18.0, finalCamera.zoom))
+                        let adjustedCamera = GMSCameraPosition.camera(
+                            withTarget: finalCamera.target,
+                            zoom: clampedZoom
+                        )
+                        
+                        print("🎯 Fine-tuned camera - Target: \(adjustedCamera.target.latitude), \(adjustedCamera.target.longitude), Zoom: \(adjustedCamera.zoom)")
+                        mapView.animate(to: adjustedCamera)
+                    }
+                }
+                
+            } else {
+                print("❌ No valid coordinates for bounds, using fallback")
+                // Fallback for single valid coordinate
+                if let firstCoord = validCoordinates.first {
+                    let fallbackCamera = GMSCameraPosition.camera(
+                        withTarget: firstCoord,
+                        zoom: 14.0
+                    )
+                    mapView.animate(to: fallbackCamera)
+                }
+            }
+        } else if coordinates.count == 1 && coordinates.first!.latitude != 0 && coordinates.first!.longitude != 0 {
+            // Single location: center on that point
+            print("📍 Single location: centering on coordinate")
+            let singleLocationCamera = GMSCameraPosition.camera(
+                withTarget: coordinates.first!,
+                zoom: 14.0
+            )
+            mapView.animate(to: singleLocationCamera)
+        } else {
+            print("❌ No valid coordinates available, using default view")
+            // No coordinates: use default Houston view
+            let defaultCamera = GMSCameraPosition.camera(
+                withLatitude: 29.7604,
+                longitude: -95.3698,
+                zoom: 12.0
+            )
+            mapView.animate(to: defaultCamera)
         }
         
         // Add traffic toggle button
@@ -368,26 +493,29 @@ extension MapRouteData {
         waypoints.append(RouteStop(
             address: routeData.startLocation,
             name: extractBusinessName(routeData.startLocation),
+            originalInput: routeData.startLocation,
             type: .start,
             distance: nil,
             duration: nil
         ))
-        
+
         // Add stops
         for stop in routeData.stops {
             waypoints.append(RouteStop(
                 address: stop,
                 name: extractBusinessName(stop),
+                originalInput: stop,
                 type: .stop,
                 distance: "\(Int.random(in: 5...15)) min",
                 duration: "\(Float.random(in: 2...8).rounded(1)) mi"
             ))
         }
-        
+
         // Add end
         waypoints.append(RouteStop(
             address: routeData.endLocation,
             name: extractBusinessName(routeData.endLocation),
+            originalInput: routeData.endLocation,
             type: .end,
             distance: "\(Int.random(in: 8...20)) min",
             duration: "\(Float.random(in: 3...10).rounded(1)) mi"

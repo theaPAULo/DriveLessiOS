@@ -149,6 +149,7 @@ struct RouteResultsView: View {
             waypoints.append(RouteStop(
                 address: firstLeg.start_address,
                 name: extractBusinessName(firstLeg.start_address),
+                originalInput: firstLeg.start_address,
                 type: .start,
                 distance: nil,
                 duration: nil
@@ -164,6 +165,7 @@ struct RouteResultsView: View {
                     waypoints.append(RouteStop(
                         address: leg.end_address,
                         name: extractBusinessName(leg.end_address),
+                        originalInput: leg.end_address,
                         type: .stop,
                         distance: leg.distance.text,
                         duration: leg.duration.text
@@ -180,6 +182,7 @@ struct RouteResultsView: View {
             waypoints.append(RouteStop(
                 address: lastLeg.end_address,
                 name: extractBusinessName(lastLeg.end_address),
+                originalInput: lastLeg.end_address,  // Added missing parameter
                 type: .end,
                 distance: nil,
                 duration: nil
@@ -247,14 +250,21 @@ struct RouteResultsView: View {
                     
                     // Stop Details
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(stop.name.isEmpty ? stop.address : stop.name)
+                        // Main text: Business name or best display name
+                        Text(stop.displayName)
                             .font(.body)
                             .fontWeight(.medium)
+                            .lineLimit(1)
                         
-                        Text(stop.address)
-                            .font(.caption)
-                            .foregroundColor(.gray)
+                        // Subtitle: Full address (only show if different from display name)
+                        if stop.displayAddress != stop.displayName {
+                            Text(stop.displayAddress)
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                                .lineLimit(2)
+                        }
                         
+                        // Distance and duration info
                         if let distance = stop.distance, let duration = stop.duration {
                             HStack {
                                 Text("📍 \(distance)")
@@ -377,6 +387,7 @@ struct RouteResultsView: View {
         mockStops.append(RouteStop(
             address: routeData.startLocation,
             name: extractBusinessName(routeData.startLocation),
+            originalInput: routeData.startLocation,  // Added missing parameter
             type: .start,
             distance: nil,
             duration: nil
@@ -387,6 +398,7 @@ struct RouteResultsView: View {
                 mockStops.append(RouteStop(
                     address: stop,
                     name: extractBusinessName(stop),
+                    originalInput: stop,  // Added missing parameter
                     type: .stop,
                     distance: "10.5 mi",
                     duration: "15 min"
@@ -397,6 +409,7 @@ struct RouteResultsView: View {
         mockStops.append(RouteStop(
             address: routeData.endLocation,
             name: extractBusinessName(routeData.endLocation),
+            originalInput: routeData.endLocation,  // Added missing parameter
             type: .end,
             distance: nil,
             duration: nil
