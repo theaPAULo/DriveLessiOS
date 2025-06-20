@@ -17,6 +17,12 @@ struct RouteInputView: View {
     @State private var isRoundTrip: Bool = false
     @State private var considerTraffic: Bool = true
     
+    // MARK: - State Properties for Business Names
+    // Store business names separately for display purposes
+    @State private var startLocationDisplayName: String = ""
+    @State private var endLocationDisplayName: String = ""
+    @State private var stopDisplayNames: [String] = [""] // Parallel array to stops for display names
+    
     // Reference to location manager
     @ObservedObject var locationManager: LocationManager
     
@@ -76,10 +82,10 @@ struct RouteInputView: View {
     private var routeInputCard: some View {
         VStack(spacing: 20) {
             
-            // Start Location
+            // Start Location - Updated to show business name but store full address
             VStack(alignment: .leading, spacing: 8) {
                 InlineAutocompleteTextField(
-                    text: $startLocation,
+                    text: $startLocationDisplayName, // Display the business name
                     placeholder: "Start",
                     icon: "location.circle.fill",
                     iconColor: primaryGreen,
@@ -104,6 +110,7 @@ struct RouteInputView: View {
                 }
             }
             
+            
             // Visual connector line
             connectorLine
             
@@ -113,10 +120,10 @@ struct RouteInputView: View {
             // Another connector line
             connectorLine
             
-            // End Location
+            // End Location - Updated to show business name but store full address
             VStack(alignment: .leading, spacing: 8) {
                 InlineAutocompleteTextField(
-                    text: $endLocation,
+                    text: $endLocationDisplayName, // Display the business name
                     placeholder: isRoundTrip ? "Return to start" : "Destination",
                     icon: "flag.checkered",
                     iconColor: accentBrown,
@@ -157,26 +164,13 @@ struct RouteInputView: View {
             ForEach(stops.indices, id: \.self) { index in
                 HStack(spacing: 12) {
                     InlineAutocompleteTextField(
-                        text: $stops[index],
+                        text: $stopDisplayNames[index], // Display the business name
                         placeholder: "Add stop",
                         icon: "mappin.circle.fill",
                         iconColor: Color(.systemBlue),
                         currentLocation: locationManager.location,
                         onPlaceSelected: { place in
-                            // Extract business name for stops too
-                            let businessName = place.name ?? ""
-                            let address = place.formattedAddress ?? ""
-                            
-                            print("🏠 Selected stop - Name: '\(businessName)', Address: '\(address)'")
-                            
-                            // Update the stop with business name if available
-                            if !businessName.isEmpty && businessName != address {
-                                stops[index] = businessName
-                                print("✅ Using business name for stop: '\(businessName)'")
-                            } else {
-                                stops[index] = address
-                                print("ℹ️ Using address for stop (no business name available)")
-                            }
+                            handleStopLocationSelected(place, at: index)
                         }
                     )
                     
@@ -305,49 +299,29 @@ struct RouteInputView: View {
         .animation(.easeInOut(duration: 0.2), value: canOptimizeRoute)
     }
     
-    // MARK: - Helper Functions
-    
-    private func handleStartLocationSelected(_ place: GMSPlace) {
-        // Extract business name if available, otherwise use address
-        let businessName = place.name ?? ""
-        let address = place.formattedAddress ?? ""
-        
-        print("🏠 Selected start - Name: '\(businessName)', Address: '\(address)'")
-        
-        // Store the business name in a way we can use later
-        // For now, we'll update the text field to show the business name
-        if !businessName.isEmpty && businessName != address {
-            startLocation = businessName
-            print("✅ Using business name: '\(businessName)'")
-        } else {
-            startLocation = address
-            print("ℹ️ Using address (no business name available)")
-        }
-        
-        // Add haptic feedback
-        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-        impactFeedback.impactOccurred()
-        
-        // Auto-update end location if round trip is enabled
-        if isRoundTrip {
-            endLocation = startLocation
-        }
-    }
-
     private func handleEndLocationSelected(_ place: GMSPlace) {
-        // Extract business name if available, otherwise use address
+        // Extract both business name and full address
         let businessName = place.name ?? ""
-        let address = place.formattedAddress ?? ""
+        let fullAddress = place.formattedAddress ?? ""
         
-        print("🏠 Selected end - Name: '\(businessName)', Address: '\(address)'")
+        print("🏠 Selected end - Name: '\(businessName)', Address: '\(fullAddress)'")
         
-        // Store the business name in a way we can use later
-        if !businessName.isEmpty && businessName != address {
-            endLocation = businessName
-            print("✅ Using business name: '\(businessName)'")
+        // Store the full address for API calls
+        if !fullAddress.isEmpty {
+            endLocation = fullAddress  // For API calls
+            print("✅ Using full address for API: '\(fullAddress)'")
+        } else if !businessName.isEmpty {
+            endLocation = businessName  // Fallback
+            print("⚠️ Using business name as fallback: '\(businessName)'")
+        }
+        
+        // Store the business name for display
+        if !businessName.isEmpty {
+            endLocationDisplayName = businessName  // For display
+            print("✅ Using business name for display: '\(businessName)'")
         } else {
-            endLocation = address
-            print("ℹ️ Using address (no business name available)")
+            endLocationDisplayName = fullAddress  // Fallback to address
+            print("ℹ️ Using address for display (no business name)")
         }
         
         // Add haptic feedback
@@ -356,6 +330,40 @@ struct RouteInputView: View {
         
         if !isRoundTrip {
             savedEndLocation = endLocation
+        }
+    }
+
+    private func handleStopLocationSelected(_ place: GMSPlace, at index: Int) {
+        // Extract both business name and full address
+        let businessName = place.name ?? ""
+        let fullAddress = place.formattedAddress ?? ""
+        
+        print("🏠 Selected stop \(index) - Name: '\(businessName)', Address: '\(fullAddress)'")
+        
+        // Ensure stops arrays are the right size
+        while stops.count <= index {
+            stops.append("")
+        }
+        while stopDisplayNames.count <= index {
+            stopDisplayNames.append("")
+        }
+        
+        // Store the full address for API calls
+        if !fullAddress.isEmpty {
+            stops[index] = fullAddress  // For API calls
+            print("✅ Using full address for API: '\(fullAddress)'")
+        } else if !businessName.isEmpty {
+            stops[index] = businessName  // Fallback
+            print("⚠️ Using business name as fallback: '\(businessName)'")
+        }
+        
+        // Store the business name for display
+        if !businessName.isEmpty {
+            stopDisplayNames[index] = businessName  // For display
+            print("✅ Using business name for display: '\(businessName)'")
+        } else {
+            stopDisplayNames[index] = fullAddress  // Fallback to address
+            print("ℹ️ Using address for display (no business name)")
         }
     }
     
