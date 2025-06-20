@@ -63,14 +63,6 @@ struct RouteInputView: View {
                     .foregroundColor(primaryGreen)
                 
                 Spacer()
-                
-                // Settings icon (placeholder for future)
-                Button(action: {}) {
-                    Image(systemName: "gearshape.fill")
-                        .font(.system(size: 20))
-                        .foregroundColor(.gray)
-                }
-                .disabled(true) // Will enable later
             }
             
             Text("Plan your route")
