@@ -420,11 +420,58 @@ struct RouteResultsView: View {
     }
     
     private func openGoogleMaps() {
-        print("🗺️ Opening Google Maps...")
+        guard let url = generateGoogleMapsUrl() else {
+            print("❌ Could not generate Google Maps URL")
+            return
+        }
+        
+        print("🗺️ Opening Google Maps with URL: \(url)")
+        UIApplication.shared.open(url)
     }
-    
+
     private func openAppleMaps() {
-        print("🍎 Opening Apple Maps...")
+        guard let url = generateAppleMapsUrl() else {
+            print("❌ Could not generate Apple Maps URL")
+            return
+        }
+        
+        print("🍎 Opening Apple Maps with URL: \(url)")
+        UIApplication.shared.open(url)
+    }
+
+    private func generateGoogleMapsUrl() -> URL? {
+        guard !optimizedRoute.optimizedStops.isEmpty else { return nil }
+        
+        let origin = optimizedRoute.optimizedStops.first!.address
+        let destination = optimizedRoute.optimizedStops.last!.address
+        let waypoints = Array(optimizedRoute.optimizedStops.dropFirst().dropLast())
+            .map { $0.address }
+            .joined(separator: "|")
+        
+        var urlString = "https://www.google.com/maps/dir/?api=1"
+        urlString += "&origin=\(origin.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")"
+        urlString += "&destination=\(destination.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")"
+        
+        if !waypoints.isEmpty {
+            urlString += "&waypoints=\(waypoints.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")"
+        }
+        
+        urlString += "&travelmode=driving"
+        
+        return URL(string: urlString)
+    }
+
+    private func generateAppleMapsUrl() -> URL? {
+        guard !optimizedRoute.optimizedStops.isEmpty else { return nil }
+        
+        let origin = optimizedRoute.optimizedStops.first!.address
+        let destination = optimizedRoute.optimizedStops.last!.address
+        
+        var urlString = "http://maps.apple.com/?daddr=\(destination.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")"
+        urlString += "&saddr=\(origin.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")"
+        urlString += "&dirflg=d"
+        
+        return URL(string: urlString)
     }
     
     private func goBack() {
