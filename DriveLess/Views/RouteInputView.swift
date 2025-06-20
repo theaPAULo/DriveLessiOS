@@ -25,6 +25,8 @@ struct RouteInputView: View {
     
     // Reference to location manager
     @ObservedObject var locationManager: LocationManager
+    @ObservedObject var routeLoader: RouteLoader
+
     
     // MARK: - Color Theme (Earthy)
     private let primaryGreen = Color(red: 0.2, green: 0.4, blue: 0.2) // Dark forest green
@@ -54,7 +56,14 @@ struct RouteInputView: View {
                 .padding(.top, 10)
             }
             .background(Color(.systemGroupedBackground))
-            .navigationBarHidden(true)
+            .navigationBarBackButtonHidden(true)
+            .onAppear {
+                // Check if there's a route to load
+                if let routeToLoad = routeLoader.routeToLoad {
+                    loadSavedRoute(routeToLoad)
+                    routeLoader.clearLoadedRoute()
+                }
+            }
         }
     }
     
@@ -524,8 +533,55 @@ struct RouteInputView: View {
         
         return routeData
     }
+    // MARK: - Load Saved Route
+
+    /// Populates the form with data from a saved route
+    /// - Parameter routeData: The route data to load into the form
+    private func loadSavedRoute(_ routeData: RouteData) {
+        print("📝 Loading saved route into form...")
+        
+        // Add haptic feedback
+        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+        impactFeedback.impactOccurred()
+        
+        // Load basic route data
+        startLocation = routeData.startLocation
+        startLocationDisplayName = extractBusinessName(routeData.startLocation)
+        
+        endLocation = routeData.endLocation
+        endLocationDisplayName = extractBusinessName(routeData.endLocation)
+        
+        // Load stops
+        stops = routeData.stops.isEmpty ? [""] : routeData.stops
+        stopDisplayNames = routeData.stops.map { extractBusinessName($0) }
+        
+        // Ensure we have at least one stop input
+        if stops.isEmpty {
+            stops = [""]
+            stopDisplayNames = [""]
+        }
+        
+        // Load preferences
+        considerTraffic = routeData.considerTraffic
+        isRoundTrip = routeData.isRoundTrip
+        
+        print("✅ Route loaded successfully: \(startLocationDisplayName) → \(endLocationDisplayName)")
+    }
+
+    /// Extracts business name from full address for display
+    /// - Parameter address: Full address string
+    /// - Returns: Business name or first part of address
+    private func extractBusinessName(_ address: String) -> String {
+        if address.contains(",") {
+            let firstPart = address.components(separatedBy: ",").first ?? ""
+            return firstPart.trimmingCharacters(in: .whitespaces)
+        }
+        return address
+    }
 }
 
 #Preview {
-    RouteInputView(locationManager: LocationManager())
+    RouteInputView(locationManager: LocationManager(),
+    routeLoader: RouteLoader()
+)
 }

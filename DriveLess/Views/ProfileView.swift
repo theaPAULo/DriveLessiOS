@@ -10,6 +10,8 @@ import CoreData  // <-- ADD THIS LINE
 
 struct ProfileView: View {
     @EnvironmentObject var authManager: AuthenticationManager
+    @EnvironmentObject var routeLoader: RouteLoader  // <-- ADD THIS LINE
+
     
     @StateObject private var routeHistoryManager = RouteHistoryManager()
     @State private var savedRoutes: [SavedRoute] = []
@@ -42,8 +44,21 @@ struct ProfileView: View {
         .navigationTitle("Profile")
         .navigationBarTitleDisplayMode(.large)
         .navigationBarBackButtonHidden(true)
+        .sheet(isPresented: $showingRouteHistory) {
+            RouteHistoryView(
+                routeHistoryManager: routeHistoryManager,
+                savedRoutes: savedRoutes,
+                onRouteSelected: { routeData in
+                    // Use RouteLoader to navigate to Search tab with this route
+                    routeLoader.loadRoute(routeData)
+                    
+                    // Close the route history sheet
+                    showingRouteHistory = false
+                }
+            )
+        }
         .onAppear {
-            loadRouteHistory()  // <-- ADD THIS LINE
+            loadRouteHistory()
         }
     }
     
@@ -358,5 +373,7 @@ struct ProfileView: View {
 #Preview {
     NavigationView {
         ProfileView()
+            .environmentObject(AuthenticationManager())  // <-- ADD THIS IF MISSING
+            .environmentObject(RouteLoader())  // <-- ADD THIS LINE
     }
 }

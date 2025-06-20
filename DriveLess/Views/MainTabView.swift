@@ -19,6 +19,9 @@ struct MainTabView: View {
     // Reference to location manager (passed from parent)
     @ObservedObject var locationManager: LocationManager
     @ObservedObject var authManager: AuthenticationManager
+    
+    @StateObject private var routeLoader = RouteLoader()
+
 
     
     // Track selected tab for custom styling
@@ -34,7 +37,7 @@ struct MainTabView: View {
             
             // MARK: - Search Tab (Route Planning)
             NavigationStack {
-                RouteInputView(locationManager: locationManager)
+                RouteInputView(locationManager: locationManager,routeLoader: routeLoader)
             }
             .tabItem {
                 Image(systemName: selectedTab == 0 ? "map.fill" : "map")
@@ -46,6 +49,8 @@ struct MainTabView: View {
             NavigationStack {
                 ProfileView()
                     .environmentObject(authManager)
+                    .environmentObject(routeLoader)  // <-- ADD THIS LINE
+
             }
             .tabItem {
                 Image(systemName: selectedTab == 1 ? "person.fill" : "person")
@@ -54,6 +59,17 @@ struct MainTabView: View {
             .tag(1)
         }
         .accentColor(primaryGreen) // Tab bar accent color
+        .onChange(of: routeLoader.shouldNavigateToSearch) { _, shouldNavigate in
+            if shouldNavigate {
+                // Switch to Search tab (tab 0)
+                selectedTab = 0
+                
+                // Clear the navigation flag
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    routeLoader.shouldNavigateToSearch = false
+                }
+            }
+        }
         .onAppear {
             // Customize tab bar appearance for better theming
             configureTabBarAppearance()
