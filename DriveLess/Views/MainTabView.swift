@@ -18,6 +18,8 @@ import SwiftUI
 struct MainTabView: View {
     // Reference to location manager (passed from parent)
     @ObservedObject var locationManager: LocationManager
+    @ObservedObject var authManager: AuthenticationManager
+
     
     // Track selected tab for custom styling
     @State private var selectedTab = 0
@@ -43,6 +45,7 @@ struct MainTabView: View {
             // MARK: - Profile Tab (User Settings & History)
             NavigationStack {
                 ProfileView()
+                    .environmentObject(authManager)
             }
             .tabItem {
                 Image(systemName: selectedTab == 1 ? "person.fill" : "person")
@@ -96,5 +99,5 @@ struct MainTabView: View {
 }
 
 #Preview {
-    MainTabView(locationManager: LocationManager())
+    MainTabView(locationManager: LocationManager(), authManager: AuthenticationManager())
 }

@@ -7,8 +7,12 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		E41D3DCE2E05B5FD009E2287 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = E41D3DCD2E05B5FD009E2287 /* FirebaseAuth */; };
+		E41D3DD02E05B5FD009E2287 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = E41D3DCF2E05B5FD009E2287 /* FirebaseFirestore */; };
+		E41D3DD32E05B616009E2287 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = E41D3DD22E05B616009E2287 /* GoogleSignIn */; };
 		E45EA6DD2E04718100C89EBE /* GooglePlaces in Frameworks */ = {isa = PBXBuildFile; productRef = E45EA6DC2E04718100C89EBE /* GooglePlaces */; };
 		E45EA6E02E04718E00C89EBE /* GoogleMaps in Frameworks */ = {isa = PBXBuildFile; productRef = E45EA6DF2E04718E00C89EBE /* GoogleMaps */; };
+		E49106D32E05CBAE00F1E96F /* AuthenticationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E49106D22E05CBAE00F1E96F /* AuthenticationServices.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -29,14 +33,28 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		E49106D22E05CBAE00F1E96F /* AuthenticationServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AuthenticationServices.framework; path = System/Library/Frameworks/AuthenticationServices.framework; sourceTree = SDKROOT; };
 		E4B4DB372E04657300992385 /* DriveLess.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DriveLess.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E4B4DB442E04657500992385 /* DriveLessTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DriveLessTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E4B4DB4E2E04657500992385 /* DriveLessUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DriveLessUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		E41D3DDA2E05BC55009E2287 /* Exceptions for "DriveLess" folder in "DriveLess" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = E4B4DB362E04657300992385 /* DriveLess */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		E4B4DB392E04657300992385 /* DriveLess */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				E41D3DDA2E05BC55009E2287 /* Exceptions for "DriveLess" folder in "DriveLess" target */,
+			);
 			path = DriveLess;
 			sourceTree = "<group>";
 		};
@@ -57,7 +75,11 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E49106D32E05CBAE00F1E96F /* AuthenticationServices.framework in Frameworks */,
+				E41D3DD32E05B616009E2287 /* GoogleSignIn in Frameworks */,
 				E45EA6E02E04718E00C89EBE /* GoogleMaps in Frameworks */,
+				E41D3DD02E05B5FD009E2287 /* FirebaseFirestore in Frameworks */,
+				E41D3DCE2E05B5FD009E2287 /* FirebaseAuth in Frameworks */,
 				E45EA6DD2E04718100C89EBE /* GooglePlaces in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -79,12 +101,21 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		E49106D12E05CBAE00F1E96F /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				E49106D22E05CBAE00F1E96F /* AuthenticationServices.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		E4B4DB2E2E04657300992385 = {
 			isa = PBXGroup;
 			children = (
 				E4B4DB392E04657300992385 /* DriveLess */,
 				E4B4DB472E04657500992385 /* DriveLessTests */,
 				E4B4DB512E04657500992385 /* DriveLessUITests */,
+				E49106D12E05CBAE00F1E96F /* Frameworks */,
 				E4B4DB382E04657300992385 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -121,6 +152,9 @@
 			packageProductDependencies = (
 				E45EA6DC2E04718100C89EBE /* GooglePlaces */,
 				E45EA6DF2E04718E00C89EBE /* GoogleMaps */,
+				E41D3DCD2E05B5FD009E2287 /* FirebaseAuth */,
+				E41D3DCF2E05B5FD009E2287 /* FirebaseFirestore */,
+				E41D3DD22E05B616009E2287 /* GoogleSignIn */,
 			);
 			productName = DriveLess;
 			productReference = E4B4DB372E04657300992385 /* DriveLess.app */;
@@ -207,6 +241,8 @@
 			packageReferences = (
 				E45EA6DB2E04718100C89EBE /* XCRemoteSwiftPackageReference "ios-places-sdk" */,
 				E45EA6DE2E04718E00C89EBE /* XCRemoteSwiftPackageReference "ios-maps-sdk" */,
+				E41D3DCC2E05B5FD009E2287 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				E41D3DD12E05B616009E2287 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E4B4DB382E04657300992385 /* Products */;
@@ -315,6 +351,7 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_ENTITLEMENTS = "";
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = DCXK36979S;
@@ -379,6 +416,7 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_ENTITLEMENTS = "";
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = DCXK36979S;
@@ -408,11 +446,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = DriveLess/DriveLess.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = DCXK36979S;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = DriveLess/Info.plist;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "DriveLess needs location access to provide route optimization and navigation features.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "DriveLess needs location access to provide route optimization from your current location.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -420,6 +460,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -438,11 +479,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = DriveLess/DriveLess.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = DCXK36979S;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = DriveLess/Info.plist;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "DriveLess needs location access to provide route optimization and navigation features.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "DriveLess needs location access to provide route optimization from your current location.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -450,6 +493,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -577,6 +621,22 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		E41D3DCC2E05B5FD009E2287 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 11.14.0;
+			};
+		};
+		E41D3DD12E05B616009E2287 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 8.0.0;
+			};
+		};
 		E45EA6DB2E04718100C89EBE /* XCRemoteSwiftPackageReference "ios-places-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/googlemaps/ios-places-sdk";
@@ -596,6 +656,21 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		E41D3DCD2E05B5FD009E2287 /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E41D3DCC2E05B5FD009E2287 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		E41D3DCF2E05B5FD009E2287 /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E41D3DCC2E05B5FD009E2287 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+		E41D3DD22E05B616009E2287 /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E41D3DD12E05B616009E2287 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignIn;
+		};
 		E45EA6DC2E04718100C89EBE /* GooglePlaces */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = E45EA6DB2E04718100C89EBE /* XCRemoteSwiftPackageReference "ios-places-sdk" */;

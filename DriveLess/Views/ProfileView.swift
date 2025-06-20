@@ -8,6 +8,8 @@
 import SwiftUI
 
 struct ProfileView: View {
+    @EnvironmentObject var authManager: AuthenticationManager
+
     // MARK: - Color Theme (Earthy - matching app theme)
     private let primaryGreen = Color(red: 0.2, green: 0.4, blue: 0.2) // Dark forest green
     private let accentBrown = Color(red: 0.4, green: 0.3, blue: 0.2) // Rich brown
@@ -37,7 +39,6 @@ struct ProfileView: View {
         .navigationBarBackButtonHidden(true)
     }
     
-    // MARK: - Header Section
     private var headerSection: some View {
         VStack(spacing: 16) {
             // Profile Avatar Placeholder
@@ -57,32 +58,57 @@ struct ProfileView: View {
                 )
             
             VStack(spacing: 4) {
-                Text("Welcome Back!")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.primary)
-                
-                Text("Sign in to save routes and track history")
-                    .font(.subheadline)
+                // Show user's name if available
+                if let user = authManager.user {
+                    Text("Hello, \(user.displayName ?? "User")!")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.primary)
+                    
+                    Text(user.email ?? "No email")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    
+                    // Show sign-in provider (Google only for now)
+                    HStack {
+                        Image(systemName: "globe")
+                            .font(.system(size: 12))
+                        Text("Signed in with Google")
+                            .font(.caption)
+                    }
                     .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
+                } else {
+                    Text("Welcome Back!")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.primary)
+                    
+                    Text("Loading user info...")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                }
             }
             
-            // Sign In Button (placeholder for now)
+            // Sign Out Button (working!)
             Button(action: {
-                // TODO: Implement authentication
-                print("🔐 Sign in button tapped")
+                // Add haptic feedback
+                let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+                impactFeedback.impactOccurred()
+                
+                // Sign out the user
+                authManager.signOut()
             }) {
                 HStack {
-                    Image(systemName: "person.circle")
+                    Image(systemName: "rectangle.portrait.and.arrow.right")
                         .font(.system(size: 16, weight: .medium))
-                    Text("Sign In")
+                    Text("Sign Out")
                         .font(.system(size: 16, weight: .semibold))
                 }
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
                 .frame(height: 44)
-                .background(primaryGreen)
+                .background(.red)
                 .cornerRadius(12)
             }
         }
