@@ -18,6 +18,8 @@ struct ProfileView: View {
     @State private var showingRouteHistory = false
     @State private var showingAdminDashboard = false
     @State private var showingSignOutConfirmation = false
+    @State private var showingSettings = false
+
 
 
     
@@ -71,6 +73,9 @@ struct ProfileView: View {
         
         .sheet(isPresented: $showingAdminDashboard) {
             AdminDashboardView()
+        }
+        .sheet(isPresented: $showingSettings) {
+            SettingsView()
         }
         .alert("Sign Out", isPresented: $showingSignOutConfirmation) {
             Button("Cancel", role: .cancel) { }
@@ -260,7 +265,7 @@ struct ProfileView: View {
                 title: "Settings",
                 subtitle: "Preferences and options",
                 action: {
-                    print("⚙️ Settings tapped - Coming in Phase 2!")
+                    showingSettings = true
                 }
             )
             
