@@ -17,6 +17,14 @@ struct RouteInputView: View {
     @State private var isRoundTrip: Bool = false
     @State private var considerTraffic: Bool = true
     
+    // MARK: - Usage Tracking
+    @StateObject private var usageTracker = UsageTrackingManager()
+    @State private var showingUsageLimitAlert = false
+
+    // MARK: - Navigation State
+    @State private var shouldNavigateToResults = false
+    @State private var routeDataForNavigation: RouteData?
+    
     // MARK: - State Properties for Business Names
     // Store business names separately for display purposes
     @State private var startLocationDisplayName: String = ""
@@ -75,13 +83,23 @@ struct RouteInputView: View {
                 // This ensures we see newly saved addresses when returning to Search tab
                 savedAddressManager.loadSavedAddresses()
                 print("🔄 Refreshed saved addresses on Search tab appear")
+                
+                // REFRESH USAGE TRACKING - NEW ADDITION
+                // This ensures we see updated usage when returning from RouteResultsView
+                usageTracker.loadTodayUsage()
+                print("📊 Refreshed usage tracking on Search tab appear")
+            }
+            .navigationDestination(isPresented: $shouldNavigateToResults) {
+                if let routeData = routeDataForNavigation {
+                    RouteResultsView(routeData: routeData)
+                }
             }
         }
     }
     
     // MARK: - Header Section
     private var headerSection: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 12) {
             HStack {
                 // App logo/title
                 Text("DriveLess")
@@ -90,12 +108,61 @@ struct RouteInputView: View {
                     .foregroundColor(primaryGreen)
                 
                 Spacer()
+                
+                // MARK: - Usage Indicator
+                usageIndicatorView
             }
             
             Text("Drive less, save time")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    // MARK: - Usage Indicator Component
+    private var usageIndicatorView: some View {
+        VStack(spacing: 4) {
+            HStack(spacing: 6) {
+                // Usage icon
+                Image(systemName: "chart.bar.fill")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(usageIndicatorColor)
+                
+                // Usage text
+                Text("\(usageTracker.todayUsage)/\(UsageTrackingManager.DAILY_LIMIT)")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(usageIndicatorColor)
+            }
+            
+            Text("routes today")
+                .font(.system(size: 10, weight: .medium))
+                .foregroundColor(.secondary)
+            
+            // Usage progress bar
+            ProgressView(value: usageTracker.getUsagePercentage())
+                .progressViewStyle(LinearProgressViewStyle(tint: usageIndicatorColor))
+                .frame(width: 60, height: 3)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color(.systemGray6))
+                .opacity(0.8)
+        )
+    }
+
+    // MARK: - Usage Indicator Color Logic
+    private var usageIndicatorColor: Color {
+        let percentage = usageTracker.getUsagePercentage()
+        
+        if percentage >= 1.0 {
+            return .red // At or over limit
+        } else if percentage >= 0.8 {
+            return .orange // Warning zone (80%+)
+        } else {
+            return primaryGreen // Normal usage
         }
     }
     
@@ -526,12 +593,12 @@ struct RouteInputView: View {
     
     // MARK: - Optimize Button
     private var optimizeButton: some View {
-        NavigationLink(destination: RouteResultsView(routeData: createRouteData())) {
+        Button(action: handleOptimizeButtonTap) {
             HStack(spacing: 12) {
                 Image(systemName: "map.fill")
                     .font(.system(size: 18, weight: .semibold))
                 
-                Text("Find Best Route")
+                Text(optimizeButtonText)
                     .font(.system(size: 18, weight: .semibold))
             }
             .foregroundColor(.white)
@@ -539,18 +606,50 @@ struct RouteInputView: View {
             .frame(height: 56) // Larger touch target
             .background(
                 LinearGradient(
-                    gradient: Gradient(colors: [primaryGreen, primaryGreen.opacity(0.8)]),
+                    gradient: Gradient(colors: [optimizeButtonColor, optimizeButtonColor.opacity(0.8)]),
                     startPoint: .leading,
                     endPoint: .trailing
                 )
             )
             .cornerRadius(16)
-            .shadow(color: primaryGreen.opacity(0.3), radius: 8, x: 0, y: 4)
+            .shadow(color: optimizeButtonColor.opacity(0.3), radius: 8, x: 0, y: 4)
         }
         .disabled(!canOptimizeRoute)
         .opacity(canOptimizeRoute ? 1.0 : 0.6)
         .scaleEffect(canOptimizeRoute ? 1.0 : 0.98)
         .animation(.easeInOut(duration: 0.2), value: canOptimizeRoute)
+        .alert("Daily Limit Reached", isPresented: $showingUsageLimitAlert) {
+            Button("OK") { }
+        } message: {
+            Text("You've used \(usageTracker.todayUsage) out of \(UsageTrackingManager.DAILY_LIMIT) route calculations today. Your limit will reset at midnight.")
+        }
+    }
+
+    // MARK: - Optimize Button Helper Methods
+    private func handleOptimizeButtonTap() {
+        // Check usage limits before navigating
+        if !usageTracker.canPerformRouteCalculation() {
+            showingUsageLimitAlert = true
+            return
+        }
+        
+        // Prepare route data and trigger navigation
+        routeDataForNavigation = createRouteData()
+        shouldNavigateToResults = true
+    }
+
+    private var optimizeButtonText: String {
+        if !usageTracker.canPerformRouteCalculation() {
+            return "Daily Limit Reached"
+        }
+        return "Find Best Route"
+    }
+
+    private var optimizeButtonColor: Color {
+        if !usageTracker.canPerformRouteCalculation() {
+            return .gray
+        }
+        return primaryGreen
     }
     
     

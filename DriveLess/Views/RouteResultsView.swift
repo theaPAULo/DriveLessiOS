@@ -20,6 +20,10 @@ struct RouteResultsView: View {
     @State private var routePolyline: String?
     @State private var waypointOrder: [Int] = []
     
+    // MARK: - Usage Tracking
+    @StateObject private var usageTracker = UsageTrackingManager()
+    @State private var showingUsageLimitAlert = false
+    
     init(routeData: RouteData) {
         self.routeData = routeData
         self._optimizedRoute = State(initialValue: routeData)
@@ -80,6 +84,13 @@ struct RouteResultsView: View {
         )
         .onAppear {
             calculateRealRoute()
+        }
+        .alert("Daily Limit Reached", isPresented: $showingUsageLimitAlert) {
+            Button("OK") {
+                dismiss() // Go back to route input
+            }
+        } message: {
+            Text("You've used \(usageTracker.todayUsage) out of \(UsageTrackingManager.DAILY_LIMIT) route calculations today. Your limit will reset at midnight.")
         }
     }
     
@@ -328,9 +339,22 @@ struct RouteResultsView: View {
     }
     
     // MARK: - Actions
-    
     private func calculateRealRoute() {
         print("🚀 Starting real route calculation...")
+        
+        // MARK: - Check Usage Limits First
+        if !usageTracker.canPerformRouteCalculation() {
+            print("❌ Usage limit exceeded: \(usageTracker.todayUsage)/\(UsageTrackingManager.DAILY_LIMIT)")
+            
+            // Show usage limit alert instead of calculating route
+            DispatchQueue.main.async {
+                self.showingUsageLimitAlert = true
+                self.isLoading = false
+            }
+            return
+        }
+        
+        print("✅ Usage check passed: \(usageTracker.todayUsage)/\(UsageTrackingManager.DAILY_LIMIT)")
         
         // Use the real route calculator
         RouteCalculator.calculateOptimizedRoute(
@@ -343,6 +367,10 @@ struct RouteResultsView: View {
                 switch result {
                 case .success(let optimizedResult):
                     print("✅ Route calculation successful!")
+                    
+                    // MARK: - Increment Usage Counter (only on success)
+                    self.usageTracker.incrementUsage()
+                    print("📈 Usage incremented to: \(self.usageTracker.todayUsage)/\(UsageTrackingManager.DAILY_LIMIT)")
                     
                     // Update the UI with real data, preserving business names from input
                     self.optimizedRoute.totalDistance = optimizedResult.totalDistance
@@ -402,7 +430,6 @@ struct RouteResultsView: View {
             }
         }
     }
-
     private func showErrorAndFallbackToMock(error: Error) {
         // For now, just log the error and show mock data
         // In production, you'd want to show an error message to the user

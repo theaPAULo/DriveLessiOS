@@ -13,6 +13,8 @@
 		E45EA6DD2E04718100C89EBE /* GooglePlaces in Frameworks */ = {isa = PBXBuildFile; productRef = E45EA6DC2E04718100C89EBE /* GooglePlaces */; };
 		E45EA6E02E04718E00C89EBE /* GoogleMaps in Frameworks */ = {isa = PBXBuildFile; productRef = E45EA6DF2E04718E00C89EBE /* GoogleMaps */; };
 		E49106D32E05CBAE00F1E96F /* AuthenticationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E49106D22E05CBAE00F1E96F /* AuthenticationServices.framework */; };
+		E4BB83A02E09B137004677A5 /* UsageTracking+CoreDataClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4BB839F2E09B133004677A5 /* UsageTracking+CoreDataClass.swift */; };
+		E4BB83A22E09B14B004677A5 /* UsageTracking+CoreDataProperties.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4BB83A12E09B148004677A5 /* UsageTracking+CoreDataProperties.swift */; };
 		E4D5536A2E06159000ECFDAC /* SavedRoute+CoreDataClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4D553682E06159000ECFDAC /* SavedRoute+CoreDataClass.swift */; };
 		E4D5536B2E06159000ECFDAC /* SavedRoute+CoreDataProperties.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4D553692E06159000ECFDAC /* SavedRoute+CoreDataProperties.swift */; };
 		E4E945C52E061A1E00004CFB /* SavedAddress+CoreDataClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4E945C32E061A1E00004CFB /* SavedAddress+CoreDataClass.swift */; };
@@ -41,6 +43,8 @@
 		E4B4DB372E04657300992385 /* DriveLess.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DriveLess.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E4B4DB442E04657500992385 /* DriveLessTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DriveLessTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E4B4DB4E2E04657500992385 /* DriveLessUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DriveLessUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		E4BB839F2E09B133004677A5 /* UsageTracking+CoreDataClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UsageTracking+CoreDataClass.swift"; sourceTree = "<group>"; };
+		E4BB83A12E09B148004677A5 /* UsageTracking+CoreDataProperties.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UsageTracking+CoreDataProperties.swift"; sourceTree = "<group>"; };
 		E4D553682E06159000ECFDAC /* SavedRoute+CoreDataClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SavedRoute+CoreDataClass.swift"; sourceTree = "<group>"; };
 		E4D553692E06159000ECFDAC /* SavedRoute+CoreDataProperties.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SavedRoute+CoreDataProperties.swift"; sourceTree = "<group>"; };
 		E4E945C32E061A1E00004CFB /* SavedAddress+CoreDataClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SavedAddress+CoreDataClass.swift"; sourceTree = "<group>"; };
@@ -120,6 +124,8 @@
 		E4B4DB2E2E04657300992385 = {
 			isa = PBXGroup;
 			children = (
+				E4BB83A12E09B148004677A5 /* UsageTracking+CoreDataProperties.swift */,
+				E4BB839F2E09B133004677A5 /* UsageTracking+CoreDataClass.swift */,
 				E4E945C32E061A1E00004CFB /* SavedAddress+CoreDataClass.swift */,
 				E4E945C42E061A1E00004CFB /* SavedAddress+CoreDataProperties.swift */,
 				E4D553682E06159000ECFDAC /* SavedRoute+CoreDataClass.swift */,
@@ -297,7 +303,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E4BB83A02E09B137004677A5 /* UsageTracking+CoreDataClass.swift in Sources */,
 				E4E945C52E061A1E00004CFB /* SavedAddress+CoreDataClass.swift in Sources */,
+				E4BB83A22E09B14B004677A5 /* UsageTracking+CoreDataProperties.swift in Sources */,
 				E4E945C62E061A1E00004CFB /* SavedAddress+CoreDataProperties.swift in Sources */,
 				E4D5536A2E06159000ECFDAC /* SavedRoute+CoreDataClass.swift in Sources */,
 				E4D5536B2E06159000ECFDAC /* SavedRoute+CoreDataProperties.swift in Sources */,
