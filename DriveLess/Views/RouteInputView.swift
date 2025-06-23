@@ -125,24 +125,32 @@ struct RouteInputView: View {
         VStack(spacing: 4) {
             HStack(spacing: 6) {
                 // Usage icon
-                Image(systemName: "chart.bar.fill")
+                Image(systemName: usageTracker.canPerformRouteCalculation() ? "chart.bar.fill" : "exclamationmark.triangle.fill")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(usageIndicatorColor)
                 
-                // Usage text
-                Text("\(usageTracker.todayUsage)/\(UsageTrackingManager.DAILY_LIMIT)")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(usageIndicatorColor)
+                // Usage text - show ∞ for admins
+                if usageTracker.todayUsage == 0 && UserDefaults.standard.bool(forKey: "driveless_admin_mode") {
+                    Text("∞/∞")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(primaryGreen)
+                } else {
+                    Text("\(usageTracker.todayUsage)/\(UsageTrackingManager.DAILY_LIMIT)")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(usageIndicatorColor)
+                }
             }
             
-            Text("routes today")
+            Text(UserDefaults.standard.bool(forKey: "driveless_admin_mode") ? "admin" : "routes today")
                 .font(.system(size: 10, weight: .medium))
                 .foregroundColor(.secondary)
             
-            // Usage progress bar
-            ProgressView(value: usageTracker.getUsagePercentage())
-                .progressViewStyle(LinearProgressViewStyle(tint: usageIndicatorColor))
-                .frame(width: 60, height: 3)
+            // Usage progress bar - hide for admins
+            if !UserDefaults.standard.bool(forKey: "driveless_admin_mode") {
+                ProgressView(value: usageTracker.getUsagePercentage())
+                    .progressViewStyle(LinearProgressViewStyle(tint: usageIndicatorColor))
+                    .frame(width: 60, height: 3)
+            }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)

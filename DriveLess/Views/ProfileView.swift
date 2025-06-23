@@ -16,8 +16,8 @@ struct ProfileView: View {
     @StateObject private var routeHistoryManager = RouteHistoryManager()
     @State private var savedRoutes: [SavedRoute] = []
     @State private var showingRouteHistory = false
-    @State private var showingAdminAuth = false
-    
+    @State private var showingAdminDashboard = false
+
 
     
     // ADD THESE LINES FOR SAVED ADDRESSES:
@@ -68,8 +68,8 @@ struct ProfileView: View {
             SavedAddressesView(savedAddressManager: savedAddressManager)
         }
         
-        .sheet(isPresented: $showingAdminAuth) {
-            AdminAuthView()
+        .sheet(isPresented: $showingAdminDashboard) {
+            AdminDashboardView()
         }
         .onAppear {
             loadRouteHistory()
@@ -127,27 +127,7 @@ struct ProfileView: View {
                 }
             }
             
-            // Sign Out Button (working!)
-            Button(action: {
-                // Add haptic feedback
-                let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-                impactFeedback.impactOccurred()
-                
-                // Sign out the user
-                authManager.signOut()
-            }) {
-                HStack {
-                    Image(systemName: "rectangle.portrait.and.arrow.right")
-                        .font(.system(size: 16, weight: .medium))
-                    Text("Sign Out")
-                        .font(.system(size: 16, weight: .semibold))
-                }
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .frame(height: 44)
-                .background(.red)
-                .cornerRadius(12)
-            }
+            // REMOVED: Sign Out Button (keeping only the one in menu)
         }
         .padding(.vertical, 20)
     }
@@ -158,7 +138,7 @@ struct ProfileView: View {
             HStack {
                 Image(systemName: "chart.bar.fill")
                     .foregroundColor(primaryGreen)
-                Text("Your Stats")
+                Text("Your Impact")
                     .font(.headline)
                     .fontWeight(.semibold)
                 Spacer()
@@ -168,7 +148,7 @@ struct ProfileView: View {
                 statItem(
                     icon: "map.fill",
                     title: "Routes",
-                    value: "\(savedRoutes.count)",  // <-- REAL DATA NOW
+                    value: "\(savedRoutes.count)",
                     subtitle: "Optimized"
                 )
                 
@@ -177,9 +157,9 @@ struct ProfileView: View {
                 
                 statItem(
                     icon: "clock.fill",
-                    title: "Recent Route",
-                    value: savedRoutes.isEmpty ? "None" : timeAgo(savedRoutes.first?.createdDate),  // <-- REAL DATA
-                    subtitle: "Last used"
+                    title: timeAgo(savedRoutes.first?.createdDate),
+                    value: "Recent",
+                    subtitle: "Last route"
                 )
                 
                 Divider()
@@ -188,28 +168,46 @@ struct ProfileView: View {
                 statItem(
                     icon: "location.fill",
                     title: "Locations",
-                    value: "\(uniqueLocationsCount)",  // <-- REAL DATA
+                    value: "\(uniqueLocationsCount)",
                     subtitle: "Visited"
                 )
             }
             
-            // ADD ROUTE HISTORY BUTTON
-            Button(action: {
-                showingRouteHistory = true
-            }) {
-                HStack {
-                    Image(systemName: "clock.arrow.circlepath")
-                        .font(.system(size: 16, weight: .medium))
-                    Text("View Route History")
-                        .font(.system(size: 16, weight: .semibold))
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.secondary)
-                }
-                .foregroundColor(primaryGreen)
-                .padding(.top, 12)
+            // MARK: - Environmental Impact Row
+            HStack(spacing: 20) {
+                impactStatItem(
+                    icon: "timer",
+                    title: "Time Saved",
+                    value: calculateTimeSaved(),
+                    subtitle: "Minutes",
+                    color: .blue
+                )
+                
+                Divider()
+                    .frame(height: 40)
+                
+                impactStatItem(
+                    icon: "leaf.fill",
+                    title: "CO₂ Saved",
+                    value: calculateEmissionsSaved(),
+                    subtitle: "Pounds",
+                    color: .green
+                )
+                
+                Divider()
+                    .frame(height: 40)
+                
+                impactStatItem(
+                    icon: "fuelpump.fill",
+                    title: "Miles Saved",
+                    value: calculateMilesSaved(),
+                    subtitle: "Distance",
+                    color: .orange
+                )
             }
+            .padding(.top, 12)
+            
+            // REMOVED: Route History Button (keeping only the one in menu)
         }
         .padding(20)
         .background(
@@ -229,6 +227,7 @@ struct ProfileView: View {
                 subtitle: "View your recent routes",
                 action: {
                     print("📋 Route history tapped")
+                    showingRouteHistory = true
                 }
             )
             
@@ -252,7 +251,7 @@ struct ProfileView: View {
                 title: "Settings",
                 subtitle: "Preferences and options",
                 action: {
-                    print("⚙️ Settings tapped")
+                    print("⚙️ Settings tapped - Coming in Phase 2!")
                 }
             )
             
@@ -264,23 +263,24 @@ struct ProfileView: View {
                 title: "Help & Support",
                 subtitle: "Contact us for assistance",
                 action: {
-                    print("❓ Help tapped")
+                    print("❓ Help tapped - Coming in Phase 2!")
                 }
             )
             
-            // Add this RIGHT BEFORE the existing "Sign Out" menu item in ProfileView.swift
-
-            Divider()
-                .padding(.leading, 50)
-
-            menuItem(
-                icon: "shield.checkered",
-                title: "Admin Panel",
-                subtitle: "Access admin dashboard",
-                action: {
-                    showingAdminAuth = true
-                }
-            )
+            // Only show admin panel if user is actually an admin
+            if isCurrentUserAdmin() {
+                Divider()
+                    .padding(.leading, 50)
+                
+                menuItem(
+                    icon: "shield.lefthalf.filled",
+                    title: "Admin Dashboard",
+                    subtitle: "Analytics & app management",
+                    action: {
+                        showingAdminDashboard = true
+                    }
+                )
+            }
             
             Divider()
                 .padding(.leading, 50)
@@ -292,6 +292,8 @@ struct ProfileView: View {
                 action: {
                     // TODO: Implement proper logout with confirmation
                     print("🚪 Sign out tapped")
+                    signOutUser()
+
                 }
             )
         }
@@ -395,6 +397,142 @@ struct ProfileView: View {
 
     private func loadRouteHistory() {
         savedRoutes = routeHistoryManager.loadRouteHistory()
+    }
+    
+    // MARK: - Environmental Impact Calculations
+
+    /// Calculates estimated time saved through route optimization
+    private func calculateTimeSaved() -> String {
+        guard !savedRoutes.isEmpty else { return "0" }
+        
+        // Calculate total distance from all routes
+        let totalDistance = savedRoutes.compactMap { route in
+            Double(route.totalDistance?.replacingOccurrences(of: " miles", with: "") ?? "0")
+        }.reduce(0, +)
+        
+        // Estimate 20% time savings from optimization (conservative estimate)
+        let optimizationSavingsPercent = 0.20
+        let averageSpeedMph = 35.0 // Average city driving speed
+        
+        let unoptimizedTimeHours = totalDistance / averageSpeedMph
+        let timeSavedHours = unoptimizedTimeHours * optimizationSavingsPercent
+        let timeSavedMinutes = timeSavedHours * 60
+        
+        if timeSavedMinutes >= 60 {
+            let hours = Int(timeSavedHours)
+            return "\(hours)h"
+        } else {
+            return "\(Int(timeSavedMinutes))"
+        }
+    }
+
+    /// Calculates estimated CO2 emissions saved through route optimization
+    private func calculateEmissionsSaved() -> String {
+        guard !savedRoutes.isEmpty else { return "0" }
+        
+        // Calculate total distance from all routes
+        let totalDistance = savedRoutes.compactMap { route in
+            Double(route.totalDistance?.replacingOccurrences(of: " miles", with: "") ?? "0")
+        }.reduce(0, +)
+        
+        // Estimate 20% distance savings from optimization
+        let optimizationSavingsPercent = 0.20
+        let distanceSaved = totalDistance * optimizationSavingsPercent
+        
+        // Average car emits ~0.89 pounds of CO2 per mile
+        let co2PerMile = 0.89
+        let co2Saved = distanceSaved * co2PerMile
+        
+        if co2Saved >= 1.0 {
+            return String(format: "%.1f", co2Saved)
+        } else {
+            return String(format: "%.2f", co2Saved)
+        }
+    }
+
+    /// Calculates estimated miles saved through route optimization
+    private func calculateMilesSaved() -> String {
+        guard !savedRoutes.isEmpty else { return "0" }
+        
+        // Calculate total distance from all routes
+        let totalDistance = savedRoutes.compactMap { route in
+            Double(route.totalDistance?.replacingOccurrences(of: " miles", with: "") ?? "0")
+        }.reduce(0, +)
+        
+        // Estimate 20% distance savings from optimization
+        let optimizationSavingsPercent = 0.20
+        let milesSaved = totalDistance * optimizationSavingsPercent
+        
+        return String(format: "%.1f", milesSaved)
+    }
+
+    /// Enhanced stat item for environmental impact metrics
+    private func impactStatItem(icon: String, title: String, value: String, subtitle: String, color: Color) -> some View {
+        VStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: 18))
+                .foregroundColor(color)
+            
+            Text(value)
+                .font(.title3)
+                .fontWeight(.bold)
+                .foregroundColor(.primary)
+            
+            VStack(spacing: 2) {
+                Text(title)
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundColor(.primary)
+                
+                Text(subtitle)
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+    
+    
+    /// Signs out the current user with proper feedback
+    private func signOutUser() {
+        print("🚪 Signing out user...")
+        
+        // Add haptic feedback
+        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+        impactFeedback.impactOccurred()
+        
+        // Clear admin status when signing out
+        UserDefaults.standard.set(false, forKey: "driveless_admin_mode")
+        UserDefaults.standard.removeObject(forKey: "driveless_admin_users")
+        
+        // Sign out through the authentication manager
+        authManager.signOut()
+        
+        print("✅ User signed out successfully")
+    }
+    
+    // MARK: - Helper Functions
+
+    /// Checks if current user is an admin
+    private func isCurrentUserAdmin() -> Bool {
+        guard let currentUser = authManager.user else { return false }
+        
+        // List of admin Firebase UIDs - add your UID and any other admins here
+        let adminUIDs = [
+            "X4bKhg8XgfUAvAOgK97eMweHCz33", // Your current UID from the logs
+            // Add other admin UIDs here as needed
+            // "another-admin-uid-here",
+        ]
+        
+        let isAdmin = adminUIDs.contains(currentUser.uid)
+        
+        if isAdmin {
+            print("🔐 User \(currentUser.uid) is an admin")
+            // Set admin mode for usage tracking
+            UserDefaults.standard.set(true, forKey: "driveless_admin_mode")
+        }
+        
+        return isAdmin
     }
 }
 
