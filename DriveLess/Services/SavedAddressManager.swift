@@ -17,7 +17,7 @@ import Foundation
 import CoreData
 
 class SavedAddressManager: ObservableObject {
-    private let coreDataManager = CoreDataManager.shared
+    public let coreDataManager = CoreDataManager.shared
     
     // Published property to notify UI of changes
     @Published var savedAddresses: [SavedAddress] = []

@@ -2,15 +2,7 @@
 //  AddAddressView.swift
 //  DriveLess
 //
-//  Created by Paul Soni on 6/20/25.
-//
-
-
-//
-//  AddAddressView.swift
-//  DriveLess
-//
-//  Interface for adding new saved addresses (Home, Work, Custom)
+//  Interface for adding new saved addresses (Home, Work, Custom) - UPDATED WITH CONSTRAINTS
 //
 
 import SwiftUI
@@ -90,10 +82,15 @@ struct AddAddressView: View {
             if locationManager.authorizationStatus == .notDetermined {
                 locationManager.requestLocationPermission()
             }
+            
+            // Set default type to first available option
+            if let firstAvailable = availableAddressTypes.first {
+                selectedAddressType = firstAvailable
+            }
         }
     }
     
-    // MARK: - Address Type Selector
+    // MARK: - Address Type Selector (WITH CONSTRAINTS)
     private var addressTypeSelector: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Location Type")
@@ -105,15 +102,26 @@ struct AddAddressView: View {
                     AddressTypeButton(
                         type: type,
                         isSelected: selectedAddressType == type,
+                        isDisabled: isTypeDisabled(type),
                         action: {
-                            selectedAddressType = type
-                            // Clear custom label when switching away from custom
-                            if type != .custom {
-                                customLabel = ""
+                            if !isTypeDisabled(type) {
+                                selectedAddressType = type
+                                // Clear custom label when switching away from custom
+                                if type != .custom {
+                                    customLabel = ""
+                                }
                             }
                         }
                     )
                 }
+            }
+            
+            // Show constraint message if applicable
+            if !constraintMessage.isEmpty {
+                Text(constraintMessage)
+                    .font(.caption)
+                    .foregroundColor(.orange)
+                    .padding(.top, 4)
             }
         }
         .padding(20)
@@ -222,6 +230,52 @@ struct AddAddressView: View {
         .opacity(canSave ? 1.0 : 0.6)
     }
     
+    // MARK: - Computed Properties (WITH CONSTRAINTS)
+    
+    /// Available address types based on existing saved addresses
+    private var availableAddressTypes: [SavedAddressManager.AddressType] {
+        var types: [SavedAddressManager.AddressType] = []
+        
+        // Only add Home if no home address exists
+        if savedAddressManager.getHomeAddress() == nil {
+            types.append(.home)
+        }
+        
+        // Only add Work if no work address exists
+        if savedAddressManager.getWorkAddress() == nil {
+            types.append(.work)
+        }
+        
+        // Always allow Custom
+        types.append(.custom)
+        
+        return types
+    }
+    
+    /// Check if a specific address type is disabled
+    private func isTypeDisabled(_ type: SavedAddressManager.AddressType) -> Bool {
+        return !availableAddressTypes.contains(type)
+    }
+    
+    /// Message explaining constraints to user
+    private var constraintMessage: String {
+        if savedAddressManager.getHomeAddress() != nil && savedAddressManager.getWorkAddress() != nil {
+            return "Home and Work locations already exist. New locations will be saved as Custom."
+        } else if savedAddressManager.getHomeAddress() != nil {
+            return "Home location already exists"
+        } else if savedAddressManager.getWorkAddress() != nil {
+            return "Work location already exists"
+        }
+        return ""
+    }
+    
+    private var canSave: Bool {
+        let hasValidLabel = selectedAddressType != .custom || !customLabel.isEmpty
+        let hasValidAddress = !selectedFullAddress.isEmpty
+        
+        return hasValidLabel && hasValidAddress
+    }
+    
     // MARK: - Action Methods
     
     private func handlePlaceSelected(_ place: GMSPlace) {
@@ -307,21 +361,13 @@ struct AddAddressView: View {
         
         dismiss()
     }
-    
-    // MARK: - Computed Properties
-    
-    private var canSave: Bool {
-        let hasValidLabel = selectedAddressType != .custom || !customLabel.isEmpty
-        let hasValidAddress = !selectedFullAddress.isEmpty
-        
-        return hasValidLabel && hasValidAddress
-    }
 }
 
-// MARK: - Address Type Button Component
+// MARK: - Address Type Button Component (UPDATED WITH DISABLED STATE)
 struct AddressTypeButton: View {
     let type: SavedAddressManager.AddressType
     let isSelected: Bool
+    let isDisabled: Bool
     let action: () -> Void
     
     private let primaryGreen = Color(red: 0.2, green: 0.4, blue: 0.2)
@@ -331,25 +377,56 @@ struct AddressTypeButton: View {
             VStack(spacing: 8) {
                 Image(systemName: type.icon)
                     .font(.system(size: 24, weight: .medium))
-                    .foregroundColor(isSelected ? .white : primaryGreen)
+                    .foregroundColor(buttonTextColor)
                 
                 Text(type.displayName)
                     .font(.caption)
                     .fontWeight(.medium)
-                    .foregroundColor(isSelected ? .white : primaryGreen)
+                    .foregroundColor(buttonTextColor)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(isSelected ? primaryGreen : Color.clear)
+                    .fill(buttonBackgroundColor)
                     .overlay(
                         RoundedRectangle(cornerRadius: 12)
-                            .stroke(primaryGreen, lineWidth: 1)
+                            .stroke(buttonBorderColor, lineWidth: 1)
                     )
             )
         }
         .buttonStyle(PlainButtonStyle())
+        .disabled(isDisabled)
+    }
+    
+    // MARK: - Button Styling Based on State
+    
+    private var buttonTextColor: Color {
+        if isDisabled {
+            return .gray
+        } else if isSelected {
+            return .white
+        } else {
+            return primaryGreen
+        }
+    }
+    
+    private var buttonBackgroundColor: Color {
+        if isDisabled {
+            return Color(.systemGray5)
+        } else if isSelected {
+            return primaryGreen
+        } else {
+            return Color.clear
+        }
+    }
+    
+    private var buttonBorderColor: Color {
+        if isDisabled {
+            return .gray.opacity(0.3)
+        } else {
+            return primaryGreen
+        }
     }
 }
 

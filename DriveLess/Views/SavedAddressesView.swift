@@ -2,15 +2,7 @@
 //  SavedAddressesView.swift
 //  DriveLess
 //
-//  Created by Paul Soni on 6/20/25.
-//
-
-
-//
-//  SavedAddressesView.swift
-//  DriveLess
-//
-//  Manage saved addresses (Home, Work, Custom locations)
+//  Manage saved addresses (Home, Work, Custom locations) - IMPROVED UX
 //
 
 import SwiftUI
@@ -20,9 +12,8 @@ struct SavedAddressesView: View {
     @ObservedObject var savedAddressManager: SavedAddressManager
     
     @State private var showingAddAddressSheet = false
-    @State private var editingAddress: SavedAddress? = nil  // <-- ADD THIS LINE
+    @State private var editingAddress: SavedAddress? = nil
 
-    
     // MARK: - Color Theme (Earthy - matching app theme)
     private let primaryGreen = Color(red: 0.2, green: 0.4, blue: 0.2)
     private let accentBrown = Color(red: 0.4, green: 0.3, blue: 0.2)
@@ -45,6 +36,13 @@ struct SavedAddressesView: View {
                 } else {
                     addressListView
                 }
+                
+                // MARK: - Add Location Button (when addresses exist)
+                if !savedAddressManager.savedAddresses.isEmpty {
+                    addLocationButton
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 20)
+                }
             }
         }
         .navigationTitle("Saved Locations")
@@ -58,25 +56,14 @@ struct SavedAddressesView: View {
                 .foregroundColor(primaryGreen)
             }
         }
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button {
-                    showingAddAddressSheet = true
-                } label: {
-                    Image(systemName: "plus")
-                        .foregroundColor(primaryGreen)
-                }
-            }
-        }
-        .sheet(isPresented: $showingAddAddressSheet) {
-            AddAddressView(savedAddressManager: savedAddressManager)
-        }
         .sheet(isPresented: $showingAddAddressSheet) {
             AddAddressView(savedAddressManager: savedAddressManager)
         }
         .sheet(item: $editingAddress) { address in
-            AddAddressView(
-                savedAddressManager: savedAddressManager)
+            EditAddressView(
+                savedAddressManager: savedAddressManager,
+                addressToEdit: address
+            )
         }
     }
     
@@ -135,6 +122,7 @@ struct SavedAddressesView: View {
                     address: address,
                     savedAddressManager: savedAddressManager,
                     onTap: {
+                        // FIXED: Open edit view instead of add view
                         editingAddress = address
                     }
                 )
@@ -184,6 +172,33 @@ struct SavedAddressesView: View {
         }
     }
     
+    // MARK: - Add Location Button (NEW)
+    private var addLocationButton: some View {
+        Button {
+            showingAddAddressSheet = true
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "plus.circle.fill")
+                    .font(.system(size: 18, weight: .semibold))
+                
+                Text("Add New Location")
+                    .font(.system(size: 16, weight: .semibold))
+            }
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .frame(height: 50)
+            .background(
+                LinearGradient(
+                    gradient: Gradient(colors: [primaryGreen, primaryGreen.opacity(0.8)]),
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .cornerRadius(12)
+            .shadow(color: primaryGreen.opacity(0.3), radius: 4, x: 0, y: 2)
+        }
+    }
+    
     // MARK: - Helper Methods
     
     private func deleteAddresses(offsets: IndexSet) {
@@ -202,16 +217,16 @@ struct SavedAddressesView: View {
     }
 }
 
-// MARK: - Saved Address Row Component
+// MARK: - Saved Address Row Component (UNCHANGED)
 struct SavedAddressRow: View {
     let address: SavedAddress
     let savedAddressManager: SavedAddressManager
-    let onTap: () -> Void  // <-- ADD THIS LINE
+    let onTap: () -> Void
     
     private let primaryGreen = Color(red: 0.2, green: 0.4, blue: 0.2)
     
     var body: some View {
-        Button(action: onTap) {  // <-- WRAP IN BUTTON
+        Button(action: onTap) {
             HStack(spacing: 12) {
                 
                 // Address Type Icon
@@ -250,16 +265,14 @@ struct SavedAddressRow: View {
                 
                 Spacer()
                 
-                // ADD EDIT INDICATOR
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .medium))
+                // EDIT INDICATOR
+                Image(systemName: "pencil.circle")
+                    .font(.system(size: 20, weight: .medium))
                     .foregroundColor(.secondary)
             }
             .padding(.vertical, 8)
         }
-        .buttonStyle(PlainButtonStyle())  // <-- KEEPS THE ROW STYLING
-        
-        // ... rest of computed properties stay the same
+        .buttonStyle(PlainButtonStyle())
     }
     
     // MARK: - Computed Properties
@@ -281,14 +294,6 @@ struct SavedAddressRow: View {
         default: return primaryGreen
         }
     }
-}
-
-#Preview("SavedAddressRow") {
-    SavedAddressRow(
-        address: SavedAddress(),
-        savedAddressManager: SavedAddressManager(),
-        onTap: {}
-    )
 }
 
 #Preview("SavedAddressesView") {

@@ -17,6 +17,7 @@ struct ProfileView: View {
     @State private var savedRoutes: [SavedRoute] = []
     @State private var showingRouteHistory = false
     @State private var showingAdminDashboard = false
+    @State private var showingSignOutConfirmation = false
 
 
     
@@ -70,6 +71,14 @@ struct ProfileView: View {
         
         .sheet(isPresented: $showingAdminDashboard) {
             AdminDashboardView()
+        }
+        .alert("Sign Out", isPresented: $showingSignOutConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Sign Out", role: .destructive) {
+                confirmSignOut()
+            }
+        } message: {
+            Text("Are you sure you want to sign out of DriveLess?")
         }
         .onAppear {
             loadRouteHistory()
@@ -495,6 +504,12 @@ struct ProfileView: View {
     
     /// Signs out the current user with proper feedback
     private func signOutUser() {
+        // Show confirmation dialog instead of signing out immediately
+        showingSignOutConfirmation = true
+    }
+
+    /// Actually performs the sign out after confirmation
+    private func confirmSignOut() {
         print("🚪 Signing out user...")
         
         // Add haptic feedback
@@ -510,7 +525,6 @@ struct ProfileView: View {
         
         print("✅ User signed out successfully")
     }
-    
     // MARK: - Helper Functions
 
     /// Checks if current user is an admin
