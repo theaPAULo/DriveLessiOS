@@ -171,10 +171,26 @@ class UsageTrackingManager: ObservableObject {
         return "guest_user" // Fallback for non-authenticated users
     }
     
-    /// Checks if current user is admin (placeholder for now)
+    /// Checks if current user is a permanent admin
     private func isAdminUser() -> Bool {
-        // For now, we'll implement this as a simple check
-        // We'll enhance this in the admin functionality step
-        return UserDefaults.standard.bool(forKey: "driveless_admin_mode")
+        // First check if general admin mode is enabled
+        if UserDefaults.standard.bool(forKey: "driveless_admin_mode") {
+            return true
+        }
+        
+        // Check if current Firebase user is in the admin list
+        if let currentUser = Auth.auth().currentUser {
+            let userID = currentUser.uid
+            let adminUsers = UserDefaults.standard.stringArray(forKey: "driveless_admin_users") ?? []
+            
+            if adminUsers.contains(userID) {
+                print("🔐 User \(userID) is a permanent admin")
+                // Set admin mode flag for this session
+                UserDefaults.standard.set(true, forKey: "driveless_admin_mode")
+                return true
+            }
+        }
+        
+        return false
     }
 }

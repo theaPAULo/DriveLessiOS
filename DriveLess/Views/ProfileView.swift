@@ -16,6 +16,9 @@ struct ProfileView: View {
     @StateObject private var routeHistoryManager = RouteHistoryManager()
     @State private var savedRoutes: [SavedRoute] = []
     @State private var showingRouteHistory = false
+    @State private var showingAdminAuth = false
+    
+
     
     // ADD THESE LINES FOR SAVED ADDRESSES:
     @StateObject private var savedAddressManager = SavedAddressManager()
@@ -63,6 +66,10 @@ struct ProfileView: View {
         }
         .sheet(isPresented: $showingAddressManager) {
             SavedAddressesView(savedAddressManager: savedAddressManager)
+        }
+        
+        .sheet(isPresented: $showingAdminAuth) {
+            AdminAuthView()
         }
         .onAppear {
             loadRouteHistory()
@@ -258,6 +265,20 @@ struct ProfileView: View {
                 subtitle: "Contact us for assistance",
                 action: {
                     print("❓ Help tapped")
+                }
+            )
+            
+            // Add this RIGHT BEFORE the existing "Sign Out" menu item in ProfileView.swift
+
+            Divider()
+                .padding(.leading, 50)
+
+            menuItem(
+                icon: "shield.checkered",
+                title: "Admin Panel",
+                subtitle: "Access admin dashboard",
+                action: {
+                    showingAdminAuth = true
                 }
             )
             
