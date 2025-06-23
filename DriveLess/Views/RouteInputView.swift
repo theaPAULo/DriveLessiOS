@@ -26,7 +26,14 @@ struct RouteInputView: View {
     // Reference to location manager
     @ObservedObject var locationManager: LocationManager
     @ObservedObject var routeLoader: RouteLoader
+    @StateObject private var savedAddressManager = SavedAddressManager()
 
+    // MARK: - Field Type Enum for Address Selection
+    private enum AddressFieldType {
+        case start
+        case end
+        case stop(index: Int)
+    }
     
     // MARK: - Color Theme (Earthy)
     private let primaryGreen = Color(red: 0.2, green: 0.4, blue: 0.2) // Dark forest green
@@ -63,6 +70,11 @@ struct RouteInputView: View {
                     loadSavedRoute(routeToLoad)
                     routeLoader.clearLoadedRoute()
                 }
+                
+                // REFRESH SAVED ADDRESSES - NEW ADDITION
+                // This ensures we see newly saved addresses when returning to Search tab
+                savedAddressManager.loadSavedAddresses()
+                print("🔄 Refreshed saved addresses on Search tab appear")
             }
         }
     }
@@ -193,12 +205,77 @@ struct RouteInputView: View {
             }
         }
     
+    /// Handles when a saved address chip is tapped
+    /// - Parameters:
+    ///   - address: The saved address that was selected
+    ///   - fieldType: Which field to populate (start, end, or specific stop)
+    private func handleSavedAddressSelected(_ address: SavedAddress, for fieldType: AddressFieldType) {
+        // Add haptic feedback
+        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+        impactFeedback.impactOccurred()
+        
+        // Get the address data
+        let fullAddress = address.fullAddress ?? ""
+        let displayName = address.label ?? ""
+        
+        print("📍 Selected saved address: '\(displayName)' at '\(fullAddress)'")
+        
+        // Populate the appropriate field
+        switch fieldType {
+        case .start:
+            startLocation = fullAddress
+            startLocationDisplayName = displayName
+            
+            // Auto-update end location if round trip is enabled
+            if isRoundTrip {
+                endLocation = fullAddress
+                endLocationDisplayName = displayName
+            }
+            
+        case .end:
+            endLocation = fullAddress
+            endLocationDisplayName = displayName
+            
+            // Save end location if not round trip
+            if !isRoundTrip {
+                savedEndLocation = fullAddress
+            }
+            
+        case .stop(let index):
+            // Ensure arrays are the right size
+            while stops.count <= index {
+                stops.append("")
+            }
+            while stopDisplayNames.count <= index {
+                stopDisplayNames.append("")
+            }
+            
+            stops[index] = fullAddress
+            stopDisplayNames[index] = displayName
+        }
+    }
+    
     // MARK: - Route Input Card
     private var routeInputCard: some View {
         VStack(spacing: 20) {
             
             // Start Location - Updated to show business name but store full address
             VStack(alignment: .leading, spacing: 8) {
+                // SAVED ADDRESS CHIPS - NEW ADDITION
+                if !savedAddressManager.savedAddresses.isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(savedAddressManager.savedAddresses.prefix(4), id: \.id) { address in
+                                SavedAddressChip(address: address) {
+                                    // Handle chip tap - populate start location
+                                    handleSavedAddressSelected(address, for: .start)
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 4)
+                    }
+                }
+                
                 InlineAutocompleteTextField(
                     text: $startLocationDisplayName, // Display the business name
                     placeholder: "Start",
@@ -237,6 +314,21 @@ struct RouteInputView: View {
             
             // End Location - Updated to show business name but store full address
             VStack(alignment: .leading, spacing: 8) {
+                // SAVED ADDRESS CHIPS FOR END LOCATION - NEW ADDITION
+                if !savedAddressManager.savedAddresses.isEmpty && !isRoundTrip {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(savedAddressManager.savedAddresses.prefix(4), id: \.id) { address in
+                                SavedAddressChip(address: address) {
+                                    // Handle chip tap - populate end location
+                                    handleSavedAddressSelected(address, for: .end)
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 4)
+                    }
+                }
+                
                 InlineAutocompleteTextField(
                     text: $endLocationDisplayName, // Display the business name
                     placeholder: isRoundTrip ? "Return to start" : "Destination",
@@ -277,24 +369,41 @@ struct RouteInputView: View {
     private var stopsSection: some View {
         VStack(spacing: 16) {
             ForEach(stops.indices, id: \.self) { index in
-                HStack(spacing: 12) {
-                    InlineAutocompleteTextField(
-                        text: $stopDisplayNames[index], // Display the business name
-                        placeholder: "Add stop",
-                        icon: "mappin.circle.fill",
-                        iconColor: Color(.systemBlue),
-                        currentLocation: locationManager.location,
-                        onPlaceSelected: { place in
-                            handleStopLocationSelected(place, at: index)
+                VStack(alignment: .leading, spacing: 8) {
+                    // SAVED ADDRESS CHIPS FOR STOPS - NEW ADDITION
+                        if !savedAddressManager.savedAddresses.isEmpty {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(savedAddressManager.savedAddresses.prefix(4), id: \.id) { address in
+                                    SavedAddressChip(address: address) {
+                                        // Handle chip tap - populate this specific stop
+                                        handleSavedAddressSelected(address, for: .stop(index: index))
+                                    }
+                                }
+                            }
+                            .padding(.horizontal, 4)
                         }
-                    )
+                    }
                     
-                    // Remove stop button (only show if more than 1 stop)
-                    if stops.count > 1 {
-                        Button(action: { removeStop(at: index) }) {
-                            Image(systemName: "minus.circle.fill")
-                                .font(.system(size: 24))
-                                .foregroundColor(.red)
+                    HStack(spacing: 12) {
+                        InlineAutocompleteTextField(
+                            text: $stopDisplayNames[index], // Display the business name
+                            placeholder: "Add stop",
+                            icon: "mappin.circle.fill",
+                            iconColor: Color(.systemBlue),
+                            currentLocation: locationManager.location,
+                            onPlaceSelected: { place in
+                                handleStopLocationSelected(place, at: index)
+                            }
+                        )
+                        
+                        // Remove stop button (only show if more than 1 stop)
+                        if stops.count > 1 {
+                            Button(action: { removeStop(at: index) }) {
+                                Image(systemName: "minus.circle.fill")
+                                    .font(.system(size: 24))
+                                    .foregroundColor(.red)
+                            }
                         }
                     }
                 }
@@ -595,6 +704,43 @@ struct RouteInputView: View {
             return firstPart.trimmingCharacters(in: .whitespaces)
         }
         return address
+    }
+}
+// MARK: - Saved Address Chip Component
+struct SavedAddressChip: View {
+    let address: SavedAddress
+    let onTap: () -> Void
+    
+    private let primaryGreen = Color(red: 0.2, green: 0.4, blue: 0.2)
+    
+    var body: some View {
+        Button(action: onTap) {
+            // Just the icon - no text for cleaner look
+            Image(systemName: iconForAddressType)
+                .font(.system(size: 16, weight: .medium))
+                .foregroundColor(primaryGreen)
+                .frame(width: 32, height: 32)
+                .background(
+                    Circle()
+                        .fill(primaryGreen.opacity(0.1))
+                        .overlay(
+                            Circle()
+                                .stroke(primaryGreen.opacity(0.3), lineWidth: 1)
+                        )
+                )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+    
+    // Helper to get icon based on address type
+    private var iconForAddressType: String {
+        guard let addressType = address.addressType else { return "mappin.circle.fill" }
+        
+        switch addressType {
+        case "home": return "house.fill"
+        case "work": return "building.2.fill"
+        default: return "mappin.circle.fill"
+        }
     }
 }
 
