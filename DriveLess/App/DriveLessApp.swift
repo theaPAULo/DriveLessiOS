@@ -13,11 +13,15 @@ struct DriveLessApp: App {
     // Core Data manager instance
     let coreDataManager = CoreDataManager.shared
     
+    // Theme manager instance (ADD THIS)
+    @StateObject private var themeManager = ThemeManager()
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environment(\.managedObjectContext, coreDataManager.viewContext)
                 .environmentObject(coreDataManager)
+                .environmentObject(themeManager)  // ADD THIS LINE
                 .onAppear {
                     // Hide navigation bars globally while keeping swipe gestures
                     UINavigationBar.appearance().isHidden = true

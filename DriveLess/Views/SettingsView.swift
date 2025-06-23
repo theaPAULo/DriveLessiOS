@@ -20,7 +20,7 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     
     // MARK: - Settings State
-    @AppStorage("themePreference") private var themePreference: ThemePreference = .system
+    @EnvironmentObject var themeManager: ThemeManager
     @AppStorage("hapticsEnabled") private var hapticsEnabled: Bool = true
     @AppStorage("defaultRoundTrip") private var defaultRoundTrip: Bool = false
     @AppStorage("defaultTrafficEnabled") private var defaultTrafficEnabled: Bool = true
@@ -56,9 +56,15 @@ struct SettingsView: View {
                         
                         Spacer()
                         
-                        Picker("Theme", selection: $themePreference) {
+                        Picker("Theme", selection: $themeManager.currentTheme) {
                             ForEach(ThemePreference.allCases, id: \.self) { theme in
-                                Text(theme.displayName).tag(theme)
+                                HStack {
+                                    Image(systemName: theme.icon)
+                                        .font(.system(size: 14))
+                                        .foregroundColor(primaryGreen)
+                                    Text(theme.displayName)
+                                }
+                                .tag(theme)
                             }
                         }
                         .pickerStyle(MenuPickerStyle())

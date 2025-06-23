@@ -12,6 +12,7 @@ struct ContentView: View {
     // Create instances of our managers
     @StateObject private var locationManager = LocationManager()
     @StateObject private var authManager = AuthenticationManager()
+    @EnvironmentObject var themeManager: ThemeManager  // ADD THIS LINE
     
     // MARK: - Color Theme (Earthy)
     private let primaryGreen = Color(red: 0.2, green: 0.4, blue: 0.2) // Dark forest green
@@ -23,7 +24,7 @@ struct ContentView: View {
             Group {
                 if authManager.isSignedIn {
                     // User is signed in - show main app
-                    MainTabView(locationManager: locationManager, authManager: authManager)
+                    MainTabView(locationManager: locationManager, authManager: authManager, themeManager: themeManager)
                 } else {
                     // User is not signed in - show sign-in screen
                     signInView

@@ -19,6 +19,7 @@ struct MainTabView: View {
     // Reference to location manager (passed from parent)
     @ObservedObject var locationManager: LocationManager
     @ObservedObject var authManager: AuthenticationManager
+    @ObservedObject var themeManager: ThemeManager  // ADD THIS LINE
     
     @StateObject private var routeLoader = RouteLoader()
 
@@ -50,6 +51,8 @@ struct MainTabView: View {
                 ProfileView()
                     .environmentObject(authManager)
                     .environmentObject(routeLoader)  // <-- ADD THIS LINE
+                    .environmentObject(themeManager)  // ADD THIS LINE
+
 
             }
             .tabItem {
@@ -115,5 +118,9 @@ struct MainTabView: View {
 }
 
 #Preview {
-    MainTabView(locationManager: LocationManager(), authManager: AuthenticationManager())
+    MainTabView(
+        locationManager: LocationManager(),
+        authManager: AuthenticationManager(),
+        themeManager: ThemeManager()
+    )
 }
