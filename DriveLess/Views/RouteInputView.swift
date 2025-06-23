@@ -92,7 +92,7 @@ struct RouteInputView: View {
                 Spacer()
             }
             
-            Text("Plan your route")
+            Text("Drive less, save time")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -288,7 +288,7 @@ struct RouteInputView: View {
                 )
                 
                 // Use current location button
-                if locationManager.location != nil {
+                if true { // locationManager.location != nil {
                     Button(action: useCurrentLocationForStart) {
                         HStack(spacing: 8) {
                             Image(systemName: "location.fill")
@@ -341,6 +341,21 @@ struct RouteInputView: View {
                 )
                 .disabled(isRoundTrip)
                 .opacity(isRoundTrip ? 0.6 : 1.0)
+                
+                // ADD THIS BLOCK RIGHT AFTER THE ABOVE:
+                // Use current location button for end location
+                if !isRoundTrip {
+                    Button(action: useCurrentLocationForEnd) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "location.fill")
+                                .font(.system(size: 14))
+                            Text("Use current location")
+                                .font(.system(size: 14, weight: .medium))
+                        }
+                        .foregroundColor(accentBrown)
+                    }
+                    .padding(.leading, 4)
+                }
             }
         }
         .padding(20)
@@ -385,26 +400,41 @@ struct RouteInputView: View {
                         }
                     }
                     
-                    HStack(spacing: 12) {
-                        InlineAutocompleteTextField(
-                            text: $stopDisplayNames[index], // Display the business name
-                            placeholder: "Add stop",
-                            icon: "mappin.circle.fill",
-                            iconColor: Color(.systemBlue),
-                            currentLocation: locationManager.location,
-                            onPlaceSelected: { place in
-                                handleStopLocationSelected(place, at: index)
-                            }
-                        )
-                        
-                        // Remove stop button (only show if more than 1 stop)
-                        if stops.count > 1 {
-                            Button(action: { removeStop(at: index) }) {
-                                Image(systemName: "minus.circle.fill")
-                                    .font(.system(size: 24))
-                                    .foregroundColor(.red)
+                    VStack(spacing: 4) {
+                        HStack(spacing: 12) {
+                            InlineAutocompleteTextField(
+                                text: $stopDisplayNames[index], // Display the business name
+                                placeholder: "Add stop",
+                                icon: "mappin.circle.fill",
+                                iconColor: Color(.systemBlue),
+                                currentLocation: locationManager.location,
+                                onPlaceSelected: { place in
+                                    handleStopLocationSelected(place, at: index)
+                                }
+                            )
+                            
+                            // Remove stop button (only show if more than 1 stop)
+                            if stops.count > 1 {
+                                Button(action: { removeStop(at: index) }) {
+                                    Image(systemName: "minus.circle.fill")
+                                        .font(.system(size: 24))
+                                        .foregroundColor(.red)
+                                }
                             }
                         }
+                        
+                        // Use current location button for this stop
+                        Button(action: { useCurrentLocationForStop(at: index) }) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "location.fill")
+                                    .font(.system(size: 14))
+                                Text("Use current location")
+                                    .font(.system(size: 14, weight: .medium))
+                            }
+                            .foregroundColor(Color(.systemBlue))
+                        }
+                        .padding(.leading, 4)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
             }
@@ -525,19 +555,350 @@ struct RouteInputView: View {
     
     
     private func useCurrentLocationForStart() {
-        guard let location = locationManager.location else { return }
-        
         // Add haptic feedback
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
         impactFeedback.impactOccurred()
         
-        // For now, use coordinates - later we'll reverse geocode
-        let locationString = "\(location.coordinate.latitude), \(location.coordinate.longitude)"
-        startLocation = locationString
-        
-        if isRoundTrip {
-            endLocation = locationString
+        // Check location authorization status
+        switch locationManager.authorizationStatus {
+        case .notDetermined:
+            print("📍 Requesting location permission...")
+            locationManager.requestLocationPermission()
+            // Show user feedback
+            startLocationDisplayName = "Requesting location access..."
+            
+            // Try again after a short delay to see if permission was granted
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                if locationManager.authorizationStatus == .authorizedWhenInUse || locationManager.authorizationStatus == .authorizedAlways {
+                    useCurrentLocationForStart() // Retry
+                } else {
+                    startLocationDisplayName = ""
+                    // Show alert about location access
+                    showLocationPermissionAlert()
+                }
+            }
+            
+        case .denied, .restricted:
+            print("❌ Location access denied")
+            showLocationPermissionAlert()
+            
+        case .authorizedWhenInUse, .authorizedAlways:
+            // Check if we have a current location
+            guard let location = locationManager.location else {
+                print("📍 Getting current location...")
+                startLocationDisplayName = "Getting location..."
+                locationManager.getCurrentLocation()
+                
+                // Wait a moment for location to be acquired
+                DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+                    if let location = locationManager.location {
+                        reverseGeocodeLocation(location)
+                    } else {
+                        startLocationDisplayName = ""
+                        showLocationTimeoutAlert()
+                    }
+                }
+                return
+            }
+            
+            // We have location, reverse geocode it
+            reverseGeocodeLocation(location)
+            
+        @unknown default:
+            print("⚠️ Unknown location authorization status")
+            showLocationPermissionAlert()
         }
+    }
+    
+    private func useCurrentLocationForEnd() {
+        // Add haptic feedback
+        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+        impactFeedback.impactOccurred()
+        
+        // Check location authorization status
+        switch locationManager.authorizationStatus {
+        case .notDetermined:
+            print("📍 Requesting location permission for end location...")
+            locationManager.requestLocationPermission()
+            // Show user feedback
+            endLocationDisplayName = "Requesting location access..."
+            
+            // Try again after a short delay to see if permission was granted
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                if locationManager.authorizationStatus == .authorizedWhenInUse || locationManager.authorizationStatus == .authorizedAlways {
+                    useCurrentLocationForEnd() // Retry
+                } else {
+                    endLocationDisplayName = ""
+                    showLocationPermissionAlert()
+                }
+            }
+            
+        case .denied, .restricted:
+            print("❌ Location access denied for end location")
+            showLocationPermissionAlert()
+            
+        case .authorizedWhenInUse, .authorizedAlways:
+            // Check if we have a current location
+            guard let location = locationManager.location else {
+                print("📍 Getting current location for end...")
+                endLocationDisplayName = "Getting location..."
+                locationManager.getCurrentLocation()
+                
+                // Wait a moment for location to be acquired
+                DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+                    if let location = locationManager.location {
+                        reverseGeocodeLocationForEnd(location)
+                    } else {
+                        endLocationDisplayName = ""
+                        showLocationTimeoutAlert()
+                    }
+                }
+                return
+            }
+            
+            // We have location, reverse geocode it
+            reverseGeocodeLocationForEnd(location)
+            
+        @unknown default:
+            print("⚠️ Unknown location authorization status for end location")
+            showLocationPermissionAlert()
+        }
+    }
+
+    // Helper function for reverse geocoding end location
+    private func reverseGeocodeLocationForEnd(_ location: CLLocation) {
+        print("📍 Reverse geocoding end location: \(location.coordinate.latitude), \(location.coordinate.longitude)")
+        
+        let geocoder = CLGeocoder()
+        geocoder.reverseGeocodeLocation(location) { placemarks, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    print("❌ Reverse geocoding failed for end location: \(error.localizedDescription)")
+                    // Fallback to coordinates if reverse geocoding fails
+                    let coordinateString = "\(location.coordinate.latitude), \(location.coordinate.longitude)"
+                    endLocation = coordinateString
+                    endLocationDisplayName = "Current Location"
+                    return
+                }
+                
+                if let placemark = placemarks?.first {
+                    // Build readable address from placemark
+                    var addressComponents: [String] = []
+                    
+                    if let streetNumber = placemark.subThoroughfare {
+                        addressComponents.append(streetNumber)
+                    }
+                    if let streetName = placemark.thoroughfare {
+                        addressComponents.append(streetName)
+                    }
+                    if let city = placemark.locality {
+                        addressComponents.append(city)
+                    }
+                    if let state = placemark.administrativeArea {
+                        addressComponents.append(state)
+                    }
+                    if let zipCode = placemark.postalCode {
+                        addressComponents.append(zipCode)
+                    }
+                    
+                    let fullAddress = addressComponents.joined(separator: ", ")
+                    print("✅ Reverse geocoded end location to: \(fullAddress)")
+                    
+                    // Store both full address and display name for end location
+                    endLocation = fullAddress
+                    endLocationDisplayName = "Current Location"
+                    
+                    // Save end location if not round trip
+                    if !isRoundTrip {
+                        savedEndLocation = fullAddress
+                    }
+                }
+            }
+        }
+    }
+
+    private func useCurrentLocationForStop(at index: Int) {
+        // Add haptic feedback
+        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+        impactFeedback.impactOccurred()
+        
+        // Ensure arrays are the right size
+        while stops.count <= index {
+            stops.append("")
+        }
+        while stopDisplayNames.count <= index {
+            stopDisplayNames.append("")
+        }
+        
+        // Check location authorization status
+        switch locationManager.authorizationStatus {
+        case .notDetermined:
+            print("📍 Requesting location permission for stop \(index)...")
+            locationManager.requestLocationPermission()
+            // Show user feedback
+            stopDisplayNames[index] = "Requesting location access..."
+            
+            // Try again after a short delay to see if permission was granted
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                if locationManager.authorizationStatus == .authorizedWhenInUse || locationManager.authorizationStatus == .authorizedAlways {
+                    useCurrentLocationForStop(at: index) // Retry
+                } else {
+                    stopDisplayNames[index] = ""
+                    showLocationPermissionAlert()
+                }
+            }
+            
+        case .denied, .restricted:
+            print("❌ Location access denied for stop \(index)")
+            showLocationPermissionAlert()
+            
+        case .authorizedWhenInUse, .authorizedAlways:
+            // Check if we have a current location
+            guard let location = locationManager.location else {
+                print("📍 Getting current location for stop \(index)...")
+                stopDisplayNames[index] = "Getting location..."
+                locationManager.getCurrentLocation()
+                
+                // Wait longer for initial GPS fix
+                DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+                    if let location = locationManager.location {
+                        reverseGeocodeLocationForStop(location, at: index)
+                    } else {
+                        stopDisplayNames[index] = ""
+                        showLocationTimeoutAlert()
+                    }
+                }
+                return
+            }
+            
+            // We have location, reverse geocode it
+            reverseGeocodeLocationForStop(location, at: index)
+            
+        @unknown default:
+            print("⚠️ Unknown location authorization status for stop \(index)")
+            showLocationPermissionAlert()
+        }
+    }
+
+    // Helper function for reverse geocoding stop location
+    private func reverseGeocodeLocationForStop(_ location: CLLocation, at index: Int) {
+        print("📍 Reverse geocoding stop \(index) location: \(location.coordinate.latitude), \(location.coordinate.longitude)")
+        
+        let geocoder = CLGeocoder()
+        geocoder.reverseGeocodeLocation(location) { placemarks, error in
+            DispatchQueue.main.async {
+                // Ensure arrays are still the right size
+                while stops.count <= index {
+                    stops.append("")
+                }
+                while stopDisplayNames.count <= index {
+                    stopDisplayNames.append("")
+                }
+                
+                if let error = error {
+                    print("❌ Reverse geocoding failed for stop \(index): \(error.localizedDescription)")
+                    // Fallback to coordinates if reverse geocoding fails
+                    let coordinateString = "\(location.coordinate.latitude), \(location.coordinate.longitude)"
+                    stops[index] = coordinateString
+                    stopDisplayNames[index] = "Current Location"
+                    return
+                }
+                
+                if let placemark = placemarks?.first {
+                    // Build readable address from placemark
+                    var addressComponents: [String] = []
+                    
+                    if let streetNumber = placemark.subThoroughfare {
+                        addressComponents.append(streetNumber)
+                    }
+                    if let streetName = placemark.thoroughfare {
+                        addressComponents.append(streetName)
+                    }
+                    if let city = placemark.locality {
+                        addressComponents.append(city)
+                    }
+                    if let state = placemark.administrativeArea {
+                        addressComponents.append(state)
+                    }
+                    if let zipCode = placemark.postalCode {
+                        addressComponents.append(zipCode)
+                    }
+                    
+                    let fullAddress = addressComponents.joined(separator: ", ")
+                    print("✅ Reverse geocoded stop \(index) to: \(fullAddress)")
+                    
+                    // Store both full address and display name for this stop
+                    stops[index] = fullAddress
+                    stopDisplayNames[index] = "Current Location"
+                }
+            }
+        }
+    }
+    // Helper function for reverse geocoding
+    private func reverseGeocodeLocation(_ location: CLLocation) {
+        print("📍 Reverse geocoding location: \(location.coordinate.latitude), \(location.coordinate.longitude)")
+        
+        let geocoder = CLGeocoder()
+        geocoder.reverseGeocodeLocation(location) { placemarks, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    print("❌ Reverse geocoding failed: \(error.localizedDescription)")
+                    // Fallback to coordinates if reverse geocoding fails
+                    let coordinateString = "\(location.coordinate.latitude), \(location.coordinate.longitude)"
+                    startLocation = coordinateString
+                    startLocationDisplayName = "Current Location"
+                    return
+                }
+                
+                if let placemark = placemarks?.first {
+                    // Build readable address from placemark
+                    var addressComponents: [String] = []
+                    
+                    if let streetNumber = placemark.subThoroughfare {
+                        addressComponents.append(streetNumber)
+                    }
+                    if let streetName = placemark.thoroughfare {
+                        addressComponents.append(streetName)
+                    }
+                    if let city = placemark.locality {
+                        addressComponents.append(city)
+                    }
+                    if let state = placemark.administrativeArea {
+                        addressComponents.append(state)
+                    }
+                    if let zipCode = placemark.postalCode {
+                        addressComponents.append(zipCode)
+                    }
+                    
+                    let fullAddress = addressComponents.joined(separator: ", ")
+                    print("✅ Reverse geocoded to: \(fullAddress)")
+                    
+                    // Store both full address and display name
+                    startLocation = fullAddress
+                    startLocationDisplayName = "Current Location"
+                    
+                    // Auto-update end location if round trip is enabled
+                    if isRoundTrip {
+                        endLocation = fullAddress
+                        endLocationDisplayName = "Current Location"
+                    }
+                }
+            }
+        }
+    }
+
+    // Helper function to show location permission alert
+    private func showLocationPermissionAlert() {
+        // For now, just update the field with a message
+        // Later we can add a proper alert
+        print("❌ Location permission needed")
+        startLocationDisplayName = ""
+    }
+
+    // Helper function to show location timeout alert
+    private func showLocationTimeoutAlert() {
+        print("⏰ Location request timed out")
+        startLocationDisplayName = ""
     }
     
     private func addStop() {
