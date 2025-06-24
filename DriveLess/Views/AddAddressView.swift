@@ -177,31 +177,37 @@ struct AddAddressView: View {
         )
     }
     
-    // MARK: - Current Location Button
+    // MARK: - Current Location Button (UPDATED - More discrete and always functional)
     private var currentLocationButton: some View {
         Button(action: useCurrentLocation) {
-            HStack(spacing: 12) {
-                Image(systemName: "location.fill")
-                    .font(.system(size: 16, weight: .medium))
+            HStack(spacing: 8) {
+                Image(systemName: isLoading ? "location.circle" : "location.fill")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(primaryGreen.opacity(0.8))
                 
-                Text("Use Current Location")
-                    .font(.system(size: 16, weight: .medium))
+                Text(isLoading ? "Getting location..." : "Use current location")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(primaryGreen.opacity(0.8))
                 
                 if isLoading {
                     ProgressView()
-                        .scaleEffect(0.8)
+                        .scaleEffect(0.6)
+                        .tint(primaryGreen.opacity(0.8))
                 }
             }
-            .foregroundColor(primaryGreen)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
             .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(primaryGreen, lineWidth: 1)
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(primaryGreen.opacity(0.1))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(primaryGreen.opacity(0.3), lineWidth: 1)
+                    )
             )
         }
-        .disabled(isLoading || locationManager.location == nil)
-        .opacity(locationManager.location == nil ? 0.5 : 1.0)
+        .disabled(isLoading) // Only disable while actively loading
+        .opacity(isLoading ? 0.7 : 1.0)
     }
     
     // MARK: - Save Button
@@ -290,30 +296,81 @@ struct AddAddressView: View {
     }
     
     private func useCurrentLocation() {
-        guard let location = locationManager.location else {
-            errorMessage = "Current location not available"
-            return
-        }
-        
-        isLoading = true
+        print("📍 Use current location tapped")
         
         // Add haptic feedback
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
         impactFeedback.impactOccurred()
         
-        // Use reverse geocoding to get address
+        // Set loading state immediately
+        isLoading = true
+        errorMessage = nil
+        
+        // Check location authorization status
+        switch locationManager.authorizationStatus {
+        case .notDetermined:
+            print("📍 Requesting location permission...")
+            locationManager.requestLocationPermission()
+            
+            // Wait for permission response
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                self.checkLocationAndProceed()
+            }
+            
+        case .denied, .restricted:
+            print("❌ Location access denied")
+            self.isLoading = false
+            self.errorMessage = "Location access is required. Please enable it in Settings."
+            
+        case .authorizedWhenInUse, .authorizedAlways:
+            checkLocationAndProceed()
+            
+        @unknown default:
+            print("⚠️ Unknown location authorization status")
+            self.isLoading = false
+            self.errorMessage = "Location access issue. Please try again."
+        }
+    }
+
+    // MARK: - Helper function to check location and proceed
+    private func checkLocationAndProceed() {
+        // Check if we already have a current location
+        if let location = locationManager.location {
+            print("📍 Using existing location: \(location.coordinate.latitude), \(location.coordinate.longitude)")
+            reverseGeocodeLocation(location)
+        } else {
+            print("📍 Getting fresh location...")
+            locationManager.getCurrentLocation()
+            
+            // Wait for location to be acquired
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+                if let location = self.locationManager.location {
+                    self.reverseGeocodeLocation(location)
+                } else {
+                    self.isLoading = false
+                    self.errorMessage = "Unable to get your location. Please try again or enter address manually."
+                }
+            }
+        }
+    }
+    
+    // MARK: - Reverse Geocoding Helper
+    private func reverseGeocodeLocation(_ location: CLLocation) {
+        print("📍 Reverse geocoding location: \(location.coordinate.latitude), \(location.coordinate.longitude)")
+        
         let geocoder = CLGeocoder()
         geocoder.reverseGeocodeLocation(location) { placemarks, error in
             DispatchQueue.main.async {
-                isLoading = false
+                self.isLoading = false
                 
                 if let error = error {
-                    errorMessage = "Failed to get address: \(error.localizedDescription)"
+                    print("❌ Reverse geocoding failed: \(error.localizedDescription)")
+                    self.errorMessage = "Could not determine address from location."
                     return
                 }
                 
                 if let placemark = placemarks?.first {
-                    // Format the address
+                    // Build readable address from placemark
                     var addressComponents: [String] = []
                     
                     if let streetNumber = placemark.subThoroughfare {
@@ -333,11 +390,16 @@ struct AddAddressView: View {
                     }
                     
                     let fullAddress = addressComponents.joined(separator: ", ")
+                    print("✅ Reverse geocoded to: \(fullAddress)")
                     
-                    selectedDisplayName = "Current Location"
-                    selectedFullAddress = fullAddress
+                    // Update the form fields
+                    self.selectedDisplayName = "Current Location"
+                    self.selectedFullAddress = fullAddress
                     
-                    print("📍 Got current location: \(fullAddress)")
+                    // Clear any previous error
+                    self.errorMessage = nil
+                } else {
+                    self.errorMessage = "Could not determine address from location."
                 }
             }
         }
