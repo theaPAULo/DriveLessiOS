@@ -76,9 +76,9 @@ struct DriveLessColors {
         static let cardBackground = Color(.systemGray6)
         static let secondaryBackground = Color(.systemGray5)
         
-        static let primary = lightGreen
+        static let primary = Color(red: 0.6, green: 0.7, blue: 0.6) // Darker, more muted green
         static let secondary = warmBeige
-        static let accent = oliveGreen
+        static let accent = Color(red: 0.4, green: 0.5, blue: 0.3) // Darker olive
         
         static let textPrimary = Color(.label)
         static let textSecondary = Color(.secondaryLabel)
@@ -87,7 +87,7 @@ struct DriveLessColors {
         // Gradient backgrounds (darker variations)
         static let gradientStart = Color(red: 0.1, green: 0.2, blue: 0.1) // Darker forest
         static let gradientMid = Color(red: 0.15, green: 0.3, blue: 0.15) // Darker primary
-        static let gradientAccent = Color(red: 0.3, green: 0.4, blue: 0.2) // Darker olive
+        static let gradientAccent = Color(red: 0.25, green: 0.35, blue: 0.2) // Darker olive
         static let gradientEnd = Color(red: 0.3, green: 0.2, blue: 0.15) // Darker brown
     }
 }

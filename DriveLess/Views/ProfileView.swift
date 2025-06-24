@@ -2,16 +2,18 @@
 //  ProfileView.swift
 //  DriveLess
 //
-//  User profile, settings, and route history
+//  User profile with unified earthy theme system
 //
 
 import SwiftUI
-import CoreData  // <-- ADD THIS LINE
+import CoreData
 
 struct ProfileView: View {
     @EnvironmentObject var authManager: AuthenticationManager
-    @EnvironmentObject var routeLoader: RouteLoader  // <-- ADD THIS LINE
-
+    @EnvironmentObject var routeLoader: RouteLoader
+    @EnvironmentObject var themeManager: ThemeManager
+    @EnvironmentObject var hapticManager: HapticManager
+    @EnvironmentObject var settingsManager: SettingsManager
     
     @StateObject private var routeHistoryManager = RouteHistoryManager()
     @State private var savedRoutes: [SavedRoute] = []
@@ -19,24 +21,12 @@ struct ProfileView: View {
     @State private var showingAdminDashboard = false
     @State private var showingSignOutConfirmation = false
     @State private var showingSettings = false
-    @State private var showingFavoriteRoutes = false  // ADD THIS LINE
-    @State private var showingFeedbackComposer = false  // ADD THIS LINE
-
-
-
-
-
+    @State private var showingFavoriteRoutes = false
+    @State private var showingFeedbackComposer = false
     
-    // ADD THESE LINES FOR SAVED ADDRESSES:
+    // Saved addresses management
     @StateObject private var savedAddressManager = SavedAddressManager()
     @State private var showingAddressManager = false
-    @EnvironmentObject var hapticManager: HapticManager  // ADD THIS LINE
-
-
-    // MARK: - Color Theme (Earthy - matching app theme)
-    private let primaryGreen = Color(red: 0.2, green: 0.4, blue: 0.2) // Dark forest green
-    private let accentBrown = Color(red: 0.4, green: 0.3, blue: 0.2) // Rich brown
-    private let lightGreen = Color(red: 0.7, green: 0.8, blue: 0.7) // Soft green
     
     var body: some View {
         ScrollView {
@@ -56,7 +46,7 @@ struct ProfileView: View {
             .padding(.horizontal, 20)
             .padding(.top, 10)
         }
-        .background(Color(.systemGroupedBackground))
+        .background(themeManager.background)
         .navigationTitle("Profile")
         .navigationBarTitleDisplayMode(.large)
         .navigationBarBackButtonHidden(true)
@@ -64,10 +54,7 @@ struct ProfileView: View {
             RouteHistoryView(
                 routeHistoryManager: routeHistoryManager,
                 onRouteSelected: { routeData in
-                    // Use RouteLoader to navigate to Search tab with this route
                     routeLoader.loadRoute(routeData)
-                    
-                    // Close the route history sheet
                     showingRouteHistory = false
                 }
             )
@@ -79,12 +66,9 @@ struct ProfileView: View {
             FavoriteRoutesView(
                 routeHistoryManager: routeHistoryManager,
                 onRouteSelected: { routeData in
-                    // Use RouteLoader to navigate to Search tab with this route
                     routeLoader.loadRoute(routeData)
-                
-                // Close the favorite routes sheet
-                showingFavoriteRoutes = false
-            })
+                    showingFavoriteRoutes = false
+                })
         }
         .sheet(isPresented: $showingAdminDashboard) {
             AdminDashboardView()
@@ -108,13 +92,14 @@ struct ProfileView: View {
         }
     }
     
+    // MARK: - Header Section (Themed)
     private var headerSection: some View {
         VStack(spacing: 16) {
-            // Profile Avatar Placeholder
+            // Profile Avatar with theme gradient
             Circle()
                 .fill(
                     LinearGradient(
-                        gradient: Gradient(colors: [primaryGreen, lightGreen]),
+                        gradient: Gradient(colors: [themeManager.primary, themeManager.accent]),
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
@@ -125,6 +110,7 @@ struct ProfileView: View {
                         .font(.system(size: 32, weight: .medium))
                         .foregroundColor(.white)
                 )
+                .shadow(color: themeManager.cardShadow(), radius: 8, x: 0, y: 4)
             
             VStack(spacing: 4) {
                 // Show user's name if available
@@ -132,362 +118,333 @@ struct ProfileView: View {
                     Text("Hello, \(user.displayName ?? "User")!")
                         .font(.title2)
                         .fontWeight(.semibold)
-                        .foregroundColor(.primary)
+                        .foregroundColor(themeManager.textPrimary)
                     
                     Text(user.email ?? "No email")
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
-                    
-                    // Show sign-in provider - FIXED to show correct provider
-                    HStack(spacing: 4) {
-                        switch user.provider {
-                        case .apple:
-                            Image(systemName: "applelogo")
-                                .font(.system(size: 12, weight: .medium))
-                            Text("Signed in with Apple")
-                                .font(.caption)
-                        case .google:
-                            Image(systemName: "globe")
-                                .font(.system(size: 12))
-                            Text("Signed in with Google")
-                                .font(.caption)
-                        }
-                    }
-                    .foregroundColor(.secondary)
+                        .foregroundColor(themeManager.textSecondary)
                 } else {
-                    Text("Welcome Back!")
+                    Text("Welcome!")
                         .font(.title2)
                         .fontWeight(.semibold)
-                        .foregroundColor(.primary)
+                        .foregroundColor(themeManager.textPrimary)
                     
-                    Text("Loading user info...")
+                    Text("Signed in successfully")
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
+                        .foregroundColor(themeManager.textSecondary)
                 }
             }
-            
-            // REMOVED: Sign Out Button (keeping only the one in menu)
         }
-        .padding(.vertical, 20)
     }
     
-    // MARK: - Quick Stats Card
+    // MARK: - Quick Stats Card (Enhanced with Environmental Impact)
     private var quickStatsCard: some View {
         VStack(spacing: 16) {
-            HStack {
-                Image(systemName: "chart.bar.fill")
-                    .foregroundColor(primaryGreen)
-                Text("Your Impact")
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                Spacer()
-            }
+            Text("Route Statistics")
+                .font(.headline)
+                .fontWeight(.semibold)
+                .foregroundColor(themeManager.textPrimary)
+                .frame(maxWidth: .infinity, alignment: .leading)
             
+            // First Row: Basic Stats
             HStack(spacing: 20) {
                 statItem(
                     icon: "map.fill",
-                    title: "Routes",
                     value: "\(savedRoutes.count)",
-                    subtitle: "Created"  // Changed from "Optimized" to shorter text
+                    label: "Total Routes"
                 )
-
-                Divider()
-                    .frame(height: 40)
-
+                
+                statItem(
+                    icon: "heart.fill",
+                    value: "\(savedRoutes.filter { $0.isFavorite }.count)",
+                    label: "Favorites"
+                )
+                
                 statItem(
                     icon: "clock.fill",
-                    title: timeAgo(savedRoutes.first?.createdDate),
-                    value: "Recent",
-                    subtitle: "Route"  // Changed from "Last route" to just "Route"
-                )
-                
-                Divider()
-                    .frame(height: 40)
-                
-                statItem(
-                    icon: "location.fill",
-                    title: "Locations",
-                    value: "\(uniqueLocationsCount)",
-                    subtitle: "Visited"
+                    value: calculateTimeSaved(),
+                    label: "Time Saved"
                 )
             }
             
-            // MARK: - Environmental Impact Row
+            // Divider
+            Rectangle()
+                .fill(themeManager.textTertiary.opacity(0.3))
+                .frame(height: 1)
+                .padding(.horizontal, 16)
+            
+            // Second Row: Environmental Impact
             HStack(spacing: 20) {
-                impactStatItem(
-                    icon: "timer",
-                    title: "Time Saved",
-                    value: calculateTimeSaved(),
-                    subtitle: "Minutes",
-                    color: .blue
-                )
-                
-                Divider()
-                    .frame(height: 40)
-                
                 impactStatItem(
                     icon: "leaf.fill",
                     title: "CO₂ Saved",
-                    value: calculateEmissionsSaved(),
-                    subtitle: "Pounds",
+                    value: "\(calculateCO2Saved())",
+                    subtitle: "lbs",
                     color: .green
                 )
                 
-                Divider()
-                    .frame(height: 40)
-                
                 impactStatItem(
-                    icon: "fuelpump.fill",
+                    icon: "road.lanes",
                     title: "Miles Saved",
                     value: calculateMilesSaved(),
-                    subtitle: "Distance",
-                    color: .orange
+                    subtitle: "miles",
+                    color: themeManager.secondary
+                )
+                
+                impactStatItem(
+                    icon: "dollarsign.circle.fill",
+                    title: "Fuel Saved",
+                    value: calculateFuelSaved(),
+                    subtitle: "gallons",
+                    color: themeManager.accent
                 )
             }
-            .padding(.top, 12)
-            
-            // REMOVED: Route History Button (keeping only the one in menu)
         }
         .padding(20)
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(Color(.systemBackground))
-                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+                .fill(themeManager.cardBackground)
+                .shadow(color: themeManager.cardShadow(), radius: 8, x: 0, y: 4)
         )
     }
     
-    // MARK: - Menu Options Section
-    private var menuOptionsSection: some View {
-        VStack(spacing: 0) {
-            
-            menuItem(
-                icon: "clock.arrow.circlepath",
-                title: "Route History",
-                subtitle: "View your recent routes",
-                action: {
-                    hapticManager.menuNavigation()  // ADD THIS LINE
-                    print("📋 Route history tapped")
-                    showingRouteHistory = true
-                }
-            )
-            
-            Divider()
-                .padding(.leading, 50)
-            
-            // ADD THIS NEW MENU ITEM:
-            menuItem(
-                icon: "heart.fill",
-                title: "Favorite Routes",
-                subtitle: "Your saved favorite routes",
-                action: {
-                    hapticManager.menuNavigation()
-                    showingFavoriteRoutes = true
-                }
-            )
-
-            Divider()
-                .padding(.leading, 50)
-            
-            menuItem(
-                icon: "house.fill",
-                title: "Saved Locations",
-                subtitle: "Home, work, and favorites",
-                action: {
-                    hapticManager.menuNavigation()  // ADD THIS LINE
-                    showingAddressManager = true
-                }
-            )
-            
-            Divider()
-                .padding(.leading, 50)
-            
-            menuItem(
-                icon: "gearshape.fill",
-                title: "Settings",
-                subtitle: "Preferences and options",
-                action: {
-                    hapticManager.menuNavigation()  // ADD THIS LINE
-                    showingSettings = true
-                }
-            )
-            
-            Divider()
-                .padding(.leading, 50)
-            
-            menuItem(
-                icon: "envelope.circle.fill",
-                title: "Send Feedback",
-                subtitle: "Report bugs or suggest features",
-                action: {
-                    hapticManager.menuNavigation()
-                    showingFeedbackComposer = true
-                }
-            )
-            
-            // Only show admin panel if user is actually an admin
-            if isCurrentUserAdmin() {
-                Divider()
-                    .padding(.leading, 50)
-                
-                menuItem(
-                    icon: "shield.lefthalf.filled",
-                    title: "Admin Dashboard",
-                    subtitle: "Analytics & app management",
-                    action: {
-                        hapticManager.menuNavigation()  // ADD THIS LINE
-                        showingAdminDashboard = true
-                    }
-                )
-            }
-            
-            Divider()
-                .padding(.leading, 50)
-            
-            menuItem(
-                icon: "rectangle.portrait.and.arrow.right",
-                title: "Sign Out",
-                subtitle: "Return to login screen",
-                action: {
-                    hapticManager.menuNavigation()  // ADD THIS LINE
-                    // TODO: Implement proper logout with confirmation
-                    print("🚪 Sign out tapped")
-                    signOutUser()
-
-                }
-            )
-        }
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color(.systemBackground))
-                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
-        )
-    }
-    
-    // MARK: - Helper Components
-    
-    private func statItem(icon: String, title: String, value: String, subtitle: String) -> some View {
-        VStack(spacing: 4) {
+    // MARK: - Stat Item Helper (Themed)
+    private func statItem(icon: String, value: String, label: String) -> some View {
+        VStack(spacing: 8) {
             Image(systemName: icon)
-                .font(.system(size: 20))
-                .foregroundColor(primaryGreen)
+                .font(.system(size: 20, weight: .medium))
+                .foregroundColor(themeManager.primary)
             
             Text(value)
                 .font(.title2)
                 .fontWeight(.bold)
-                .foregroundColor(.primary)
+                .foregroundColor(themeManager.textPrimary)
+            
+            Text(label)
+                .font(.caption)
+                .foregroundColor(themeManager.textSecondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+    }
+    
+    // MARK: - Admin Check (Computed Property)
+    /// Checks if current user is an admin
+    private var isCurrentUserAdmin: Bool {
+        guard let currentUser = authManager.user else { return false }
+        
+        // List of admin Firebase UIDs
+        let adminUIDs = [
+            "X4bKhg8XgfUAvAOgK97eMweHCz33", // Your current UID
+            // Add other admin UIDs here as needed
+        ]
+        
+        let isAdmin = adminUIDs.contains(currentUser.uid)
+        
+        if isAdmin {
+            print("🔐 User \(currentUser.uid) is an admin")
+            // Set admin mode for usage tracking
+            UserDefaults.standard.set(true, forKey: "driveless_admin_mode")
+        }
+        
+        return isAdmin
+    }
+    
+    // MARK: - Menu Options Section (Themed)
+    private var menuOptionsSection: some View {
+        VStack(spacing: 16) {
+            
+            // Route Management Section
+            menuSectionCard(title: "Route Management") {
+                VStack(spacing: 12) {
+                    menuRow(
+                        icon: "clock.arrow.circlepath",
+                        title: "Route History",
+                        subtitle: "View and reload past routes",
+                        action: { showingRouteHistory = true }
+                    )
+                    
+                    menuDivider
+                    
+                    menuRow(
+                        icon: "heart.fill",
+                        title: "Favorite Routes",
+                        subtitle: "Quick access to saved routes",
+                        action: { showingFavoriteRoutes = true }
+                    )
+                }
+            }
+            
+            // Address Management Section
+            menuSectionCard(title: "Address Management") {
+                menuRow(
+                    icon: "house.fill",
+                    title: "Saved Addresses",
+                    subtitle: "Manage home, work & custom locations",
+                    action: { showingAddressManager = true }
+                )
+            }
+            
+            // App Settings Section
+            menuSectionCard(title: "App Settings") {
+                VStack(spacing: 12) {
+                    menuRow(
+                        icon: "gearshape.fill",
+                        title: "Settings",
+                        subtitle: "Preferences, themes & defaults",
+                        action: { showingSettings = true }
+                    )
+                    
+                    menuDivider
+                    
+                    menuRow(
+                        icon: "envelope.fill",
+                        title: "Send Feedback",
+                        subtitle: "Help us improve DriveLess",
+                        action: { showingFeedbackComposer = true }
+                    )
+                }
+            }
+            
+            // Admin Section (if user is admin)
+            if isCurrentUserAdmin {
+                menuSectionCard(title: "Admin") {
+                    menuRow(
+                        icon: "shield.checkered",
+                        title: "Admin Dashboard",
+                        subtitle: "App statistics & management",
+                        action: { showingAdminDashboard = true }
+                    )
+                }
+            }
+            
+            // Account Section
+            menuSectionCard(title: "Account") {
+                menuRow(
+                    icon: "rectangle.portrait.and.arrow.right",
+                    title: "Sign Out",
+                    subtitle: "Sign out of your account",
+                    isDestructive: true,
+                    action: { showingSignOutConfirmation = true }
+                )
+            }
+        }
+    }
+    
+    // MARK: - Menu Section Card (Themed)
+    private func menuSectionCard<Content: View>(
+        title: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(spacing: 16) {
+            Text(title)
+                .font(.headline)
+                .fontWeight(.semibold)
+                .foregroundColor(themeManager.textPrimary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            
+            content()
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(themeManager.cardBackground)
+                .shadow(color: themeManager.cardShadow(), radius: 8, x: 0, y: 4)
+        )
+    }
+    
+    // MARK: - Menu Row (Themed)
+    private func menuRow(
+        icon: String,
+        title: String,
+        subtitle: String,
+        isDestructive: Bool = false,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: {
+            hapticManager.buttonTap()
+            action()
+        }) {
+            HStack(spacing: 16) {
+                // Icon with themed background
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                isDestructive ? Color.red : themeManager.primary,
+                                isDestructive ? Color.red.opacity(0.8) : themeManager.secondary
+                            ]),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 40, height: 40)
+                    .overlay(
+                        Image(systemName: icon)
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.white)
+                    )
+                
+                // Text content
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(isDestructive ? .red : themeManager.textPrimary)
+                    
+                    Text(subtitle)
+                        .font(.system(size: 14))
+                        .foregroundColor(themeManager.textSecondary)
+                }
+                
+                Spacer()
+                
+                // Chevron
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(themeManager.textTertiary)
+            }
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+    
+    // MARK: - Menu Divider (Themed)
+    private var menuDivider: some View {
+        Rectangle()
+            .fill(themeManager.textTertiary.opacity(0.3))
+            .frame(height: 1)
+            .padding(.horizontal, 16)
+    }
+    
+    // MARK: - Enhanced stat item for environmental impact metrics
+    private func impactStatItem(icon: String, title: String, value: String, subtitle: String, color: Color) -> some View {
+        VStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: 18))
+                .foregroundColor(color)
+            
+            Text(value)
+                .font(.title3)
+                .fontWeight(.bold)
+                .foregroundColor(themeManager.textPrimary)
             
             VStack(spacing: 2) {
                 Text(title)
                     .font(.caption)
                     .fontWeight(.medium)
-                    .foregroundColor(.primary)
+                    .foregroundColor(themeManager.textPrimary)
                 
                 Text(subtitle)
                     .font(.caption2)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(themeManager.textSecondary)
             }
         }
         .frame(maxWidth: .infinity)
     }
     
-    private func menuItem(icon: String, title: String, subtitle: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 16) {
-                Image(systemName: icon)
-                    .font(.system(size: 18, weight: .medium))
-                    .foregroundColor(primaryGreen)
-                    .frame(width: 24)
-                
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.primary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    
-                    Text(subtitle)
-                        .font(.system(size: 14))
-                        .foregroundColor(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                
-                Spacer()
-                
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.secondary)
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 16)
-            .contentShape(Rectangle()) // Makes entire area tappable
-        }
-        .buttonStyle(PlainButtonStyle())
-    }
+    // MARK: - Calculation Methods
     
-    // MARK: - Computed Properties for Stats
-
-    /// Count of unique locations visited across all routes
-    private var uniqueLocationsCount: Int {
-        let allLocations = savedRoutes.flatMap { route in
-            var locations = [route.startLocation, route.endLocation].compactMap { $0 }
-            
-            // Add stops if they exist
-            if let stopsString = route.stops,
-               let stopsData = stopsString.data(using: .utf8),
-               let stops = try? JSONDecoder().decode([String].self, from: stopsData) {
-                locations.append(contentsOf: stops)
-            }
-            
-            return locations
-        }
-        
-        return Set(allLocations).count
-    }
-
-    /// Formats a date to show how long ago it was
-    private func timeAgo(_ date: Date?) -> String {
-        guard let date = date else { return "Never" }
-        
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .abbreviated
-        return formatter.localizedString(for: date, relativeTo: Date())
-    }
-
-    // MARK: - Lifecycle
-
-    private func loadRouteHistory() {
-        savedRoutes = routeHistoryManager.loadRouteHistory()
-    }
-    
-    // MARK: - Environmental Impact Calculations
-
-    /// Calculates estimated time saved through route optimization
-    private func calculateTimeSaved() -> String {
-        guard !savedRoutes.isEmpty else { return "0" }
-        
-        // Calculate total distance from all routes
-        let totalDistance = savedRoutes.compactMap { route in
-            Double(route.totalDistance?.replacingOccurrences(of: " miles", with: "") ?? "0")
-        }.reduce(0, +)
-        
-        // Estimate 20% time savings from optimization (conservative estimate)
-        let optimizationSavingsPercent = 0.20
-        let averageSpeedMph = 35.0 // Average city driving speed
-        
-        let unoptimizedTimeHours = totalDistance / averageSpeedMph
-        let timeSavedHours = unoptimizedTimeHours * optimizationSavingsPercent
-        let timeSavedMinutes = timeSavedHours * 60
-        
-        if timeSavedMinutes >= 60 {
-            let hours = Int(timeSavedHours)
-            return "\(hours)h"
-        } else {
-            return "\(Int(timeSavedMinutes))"
-        }
-    }
-
     /// Calculates estimated CO2 emissions saved through route optimization
-    private func calculateEmissionsSaved() -> String {
+    private func calculateCO2Saved() -> String {
         guard !savedRoutes.isEmpty else { return "0" }
         
         // Calculate total distance from all routes
@@ -525,47 +482,50 @@ struct ProfileView: View {
         
         return String(format: "%.1f", milesSaved)
     }
-
-    /// Enhanced stat item for environmental impact metrics
-    private func impactStatItem(icon: String, title: String, value: String, subtitle: String, color: Color) -> some View {
-        VStack(spacing: 4) {
-            Image(systemName: icon)
-                .font(.system(size: 18))
-                .foregroundColor(color)
-            
-            Text(value)
-                .font(.title3)
-                .fontWeight(.bold)
-                .foregroundColor(.primary)
-            
-            VStack(spacing: 2) {
-                Text(title)
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .foregroundColor(.primary)
-                
-                Text(subtitle)
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-            }
+    
+    /// Calculates estimated fuel saved through route optimization
+    private func calculateFuelSaved() -> String {
+        guard !savedRoutes.isEmpty else { return "0" }
+        
+        // Calculate miles saved first
+        let milesSaved = Double(calculateMilesSaved()) ?? 0
+        
+        // Average car gets ~25 MPG
+        let averageMPG = 25.0
+        let fuelSaved = milesSaved / averageMPG
+        
+        return String(format: "%.1f", fuelSaved)
+    }
+    
+    /// Calculates estimated time saved through route optimization
+    private func calculateTimeSaved() -> String {
+        guard !savedRoutes.isEmpty else { return "0h" }
+        
+        // Calculate miles saved
+        let milesSaved = Double(calculateMilesSaved()) ?? 0
+        
+        // Estimate average speed of 30 mph in city driving
+        let averageSpeed = 30.0
+        let timeSavedHours = milesSaved / averageSpeed
+        
+        if timeSavedHours >= 1.0 {
+            return String(format: "%.1fh", timeSavedHours)
+        } else {
+            let timeSavedMinutes = timeSavedHours * 60
+            return String(format: "%.0fm", timeSavedMinutes)
         }
-        .frame(maxWidth: .infinity)
     }
     
-    
-    /// Signs out the current user with proper feedback
-    private func signOutUser() {
-        // Show confirmation dialog instead of signing out immediately
-        showingSignOutConfirmation = true
+    // MARK: - Helper Methods
+    private func loadRouteHistory() {
+        savedRoutes = routeHistoryManager.loadRouteHistory()
     }
-
-    /// Actually performs the sign out after confirmation
+    
     private func confirmSignOut() {
         print("🚪 Signing out user...")
         
         // Add haptic feedback
-        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-        impactFeedback.impactOccurred()
+        hapticManager.buttonTap()
         
         // Clear admin status when signing out
         UserDefaults.standard.set(false, forKey: "driveless_admin_mode")
@@ -576,35 +536,8 @@ struct ProfileView: View {
         
         print("✅ User signed out successfully")
     }
-    // MARK: - Helper Functions
-
-    /// Checks if current user is an admin
-    private func isCurrentUserAdmin() -> Bool {
-        guard let currentUser = authManager.user else { return false }
-        
-        // List of admin Firebase UIDs - add your UID and any other admins here
-        let adminUIDs = [
-            "X4bKhg8XgfUAvAOgK97eMweHCz33", // Your current UID from the logs
-            // Add other admin UIDs here as needed
-            // "another-admin-uid-here",
-        ]
-        
-        let isAdmin = adminUIDs.contains(currentUser.uid)
-        
-        if isAdmin {
-            print("🔐 User \(currentUser.uid) is an admin")
-            // Set admin mode for usage tracking
-            UserDefaults.standard.set(true, forKey: "driveless_admin_mode")
-        }
-        
-        return isAdmin
-    }
 }
 
 #Preview {
-    NavigationView {
-        ProfileView()
-            .environmentObject(AuthenticationManager())  // <-- ADD THIS IF MISSING
-            .environmentObject(RouteLoader())  // <-- ADD THIS LINE
-    }
+    ProfileView()
 }
