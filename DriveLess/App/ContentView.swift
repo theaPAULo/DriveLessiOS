@@ -13,6 +13,10 @@ struct ContentView: View {
     @StateObject private var locationManager = LocationManager()
     @StateObject private var authManager = AuthenticationManager()
     @EnvironmentObject var themeManager: ThemeManager  // ADD THIS LINE
+    @EnvironmentObject var hapticManager: HapticManager  // ADD THIS LINE
+    @EnvironmentObject var settingsManager: SettingsManager  // ADD THIS LINE
+
+
     
     // MARK: - Color Theme (Earthy)
     private let primaryGreen = Color(red: 0.2, green: 0.4, blue: 0.2) // Dark forest green
@@ -24,7 +28,7 @@ struct ContentView: View {
             Group {
                 if authManager.isSignedIn {
                     // User is signed in - show main app
-                    MainTabView(locationManager: locationManager, authManager: authManager, themeManager: themeManager)
+                    MainTabView(locationManager: locationManager, authManager: authManager, themeManager: themeManager, hapticManager: hapticManager, settingsManager: settingsManager)
                 } else {
                     // User is not signed in - show sign-in screen
                     signInView

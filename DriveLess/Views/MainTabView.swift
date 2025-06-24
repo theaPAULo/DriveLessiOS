@@ -20,6 +20,10 @@ struct MainTabView: View {
     @ObservedObject var locationManager: LocationManager
     @ObservedObject var authManager: AuthenticationManager
     @ObservedObject var themeManager: ThemeManager  // ADD THIS LINE
+    @ObservedObject var hapticManager: HapticManager  // ADD THIS LINE
+    @ObservedObject var settingsManager: SettingsManager  // ADD THIS LINE
+
+
     
     @StateObject private var routeLoader = RouteLoader()
 
@@ -38,7 +42,9 @@ struct MainTabView: View {
             
             // MARK: - Search Tab (Route Planning)
             NavigationStack {
-                RouteInputView(locationManager: locationManager,routeLoader: routeLoader)
+                RouteInputView(locationManager: locationManager, routeLoader: routeLoader)
+                    .environmentObject(settingsManager)  // ADD THIS LINE
+                    .environmentObject(hapticManager)   // ADD THIS LINE
             }
             .tabItem {
                 Image(systemName: selectedTab == 0 ? "map.fill" : "map")
@@ -52,6 +58,10 @@ struct MainTabView: View {
                     .environmentObject(authManager)
                     .environmentObject(routeLoader)  // <-- ADD THIS LINE
                     .environmentObject(themeManager)  // ADD THIS LINE
+                    .environmentObject(hapticManager)  // ADD THIS LINE
+                    .environmentObject(settingsManager)  // ADD THIS LINE
+
+
 
 
             }
@@ -121,6 +131,9 @@ struct MainTabView: View {
     MainTabView(
         locationManager: LocationManager(),
         authManager: AuthenticationManager(),
-        themeManager: ThemeManager()
+        themeManager: ThemeManager(),
+        hapticManager: HapticManager(),  // ADD THIS LINE
+        settingsManager: SettingsManager()  // ADD THIS LINE
+
     )
 }

@@ -26,6 +26,8 @@ struct ProfileView: View {
     // ADD THESE LINES FOR SAVED ADDRESSES:
     @StateObject private var savedAddressManager = SavedAddressManager()
     @State private var showingAddressManager = false
+    @EnvironmentObject var hapticManager: HapticManager  // ADD THIS LINE
+
 
     // MARK: - Color Theme (Earthy - matching app theme)
     private let primaryGreen = Color(red: 0.2, green: 0.4, blue: 0.2) // Dark forest green
@@ -240,6 +242,7 @@ struct ProfileView: View {
                 title: "Route History",
                 subtitle: "View your recent routes",
                 action: {
+                    hapticManager.menuNavigation()  // ADD THIS LINE
                     print("📋 Route history tapped")
                     showingRouteHistory = true
                 }
@@ -253,6 +256,7 @@ struct ProfileView: View {
                 title: "Saved Locations",
                 subtitle: "Home, work, and favorites",
                 action: {
+                    hapticManager.menuNavigation()  // ADD THIS LINE
                     showingAddressManager = true
                 }
             )
@@ -265,6 +269,7 @@ struct ProfileView: View {
                 title: "Settings",
                 subtitle: "Preferences and options",
                 action: {
+                    hapticManager.menuNavigation()  // ADD THIS LINE
                     showingSettings = true
                 }
             )
@@ -277,6 +282,7 @@ struct ProfileView: View {
                 title: "Help & Support",
                 subtitle: "Contact us for assistance",
                 action: {
+                    hapticManager.menuNavigation()  // ADD THIS LINE
                     print("❓ Help tapped - Coming in Phase 2!")
                 }
             )
@@ -291,6 +297,7 @@ struct ProfileView: View {
                     title: "Admin Dashboard",
                     subtitle: "Analytics & app management",
                     action: {
+                        hapticManager.menuNavigation()  // ADD THIS LINE
                         showingAdminDashboard = true
                     }
                 )
@@ -304,6 +311,7 @@ struct ProfileView: View {
                 title: "Sign Out",
                 subtitle: "Return to login screen",
                 action: {
+                    hapticManager.menuNavigation()  // ADD THIS LINE
                     // TODO: Implement proper logout with confirmation
                     print("🚪 Sign out tapped")
                     signOutUser()

@@ -2,19 +2,42 @@
 //  ThemeManager.swift
 //  DriveLess
 //
-//  Created by Paul Soni on 6/23/25.
-//
-
-
-//
-//  ThemeManager.swift
-//  DriveLess
-//
 //  Manages app-wide theme settings and appearance
 //
 
 import SwiftUI
 import UIKit
+
+// MARK: - Theme Preference Enum
+enum ThemePreference: String, CaseIterable {
+    case light = "light"
+    case dark = "dark"
+    case system = "system"
+    
+    var displayName: String {
+        switch self {
+        case .light: return "Light"
+        case .dark: return "Dark"
+        case .system: return "Follow System"
+        }
+    }
+    
+    var icon: String {
+        switch self {
+        case .light: return "sun.max.fill"
+        case .dark: return "moon.fill"
+        case .system: return "gear"
+        }
+    }
+    
+    var description: String {
+        switch self {
+        case .light: return "Always use light appearance"
+        case .dark: return "Always use dark appearance"
+        case .system: return "Match system setting"
+        }
+    }
+}
 
 class ThemeManager: ObservableObject {
     
@@ -110,24 +133,5 @@ class ThemeManager: ObservableObject {
     
     deinit {
         NotificationCenter.default.removeObserver(self)
-    }
-}
-
-// MARK: - Theme Preference Extension
-extension ThemePreference {
-    var icon: String {
-        switch self {
-        case .light: return "sun.max.fill"
-        case .dark: return "moon.fill"
-        case .system: return "gear"
-        }
-    }
-    
-    var description: String {
-        switch self {
-        case .light: return "Always use light appearance"
-        case .dark: return "Always use dark appearance"
-        case .system: return "Match system setting"
-        }
     }
 }

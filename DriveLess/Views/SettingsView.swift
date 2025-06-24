@@ -21,11 +21,9 @@ struct SettingsView: View {
     
     // MARK: - Settings State
     @EnvironmentObject var themeManager: ThemeManager
-    @AppStorage("hapticsEnabled") private var hapticsEnabled: Bool = true
-    @AppStorage("defaultRoundTrip") private var defaultRoundTrip: Bool = false
-    @AppStorage("defaultTrafficEnabled") private var defaultTrafficEnabled: Bool = true
-    @AppStorage("distanceUnit") private var distanceUnit: DistanceUnit = .miles
-    @AppStorage("autoSaveRoutes") private var autoSaveRoutes: Bool = true
+    @EnvironmentObject var hapticManager: HapticManager  // ADD THIS LINE
+
+    @EnvironmentObject var settingsManager: SettingsManager
     
     @State private var showingTerms = false
     @State private var showingPrivacy = false
@@ -89,11 +87,18 @@ struct SettingsView: View {
                         
                         Spacer()
                         
-                        Toggle("", isOn: $hapticsEnabled)
+                        Toggle("", isOn: $hapticManager.isEnabled)
                             .labelsHidden()
+                            .onChange(of: hapticManager.isEnabled) { _, newValue in
+                                // Give haptic feedback when toggling haptics on/off
+                                if newValue {
+                                    hapticManager.success() // Feedback when turning ON
+                                }
+                            }
                     }
                     .padding(.vertical, 4)
                 }
+                
                 
                 // MARK: - Route Defaults Section
                 Section("Route Defaults") {
@@ -113,8 +118,11 @@ struct SettingsView: View {
                         
                         Spacer()
                         
-                        Toggle("", isOn: $defaultRoundTrip)
+                        Toggle("", isOn: $settingsManager.defaultRoundTrip)
                             .labelsHidden()
+                            .onChange(of: settingsManager.defaultRoundTrip) { _, newValue in
+                                hapticManager.toggle()
+                            }
                     }
                     .padding(.vertical, 4)
                     
@@ -134,8 +142,11 @@ struct SettingsView: View {
                         
                         Spacer()
                         
-                        Toggle("", isOn: $defaultTrafficEnabled)
+                        Toggle("", isOn: $settingsManager.defaultTrafficEnabled)
                             .labelsHidden()
+                            .onChange(of: settingsManager.defaultTrafficEnabled) { _, newValue in
+                                hapticManager.toggle()
+                            }
                     }
                     .padding(.vertical, 4)
                     
@@ -155,12 +166,15 @@ struct SettingsView: View {
                         
                         Spacer()
                         
-                        Picker("Units", selection: $distanceUnit) {
+                        Picker("Units", selection: $settingsManager.distanceUnit) {
                             ForEach(DistanceUnit.allCases, id: \.self) { unit in
                                 Text(unit.displayName).tag(unit)
                             }
                         }
                         .pickerStyle(MenuPickerStyle())
+                        .onChange(of: settingsManager.distanceUnit) { _, newValue in
+                            hapticManager.selection()
+                        }
                     }
                     .padding(.vertical, 4)
                 }
@@ -183,8 +197,11 @@ struct SettingsView: View {
                         
                         Spacer()
                         
-                        Toggle("", isOn: $autoSaveRoutes)
+                        Toggle("", isOn: $settingsManager.autoSaveRoutes)
                             .labelsHidden()
+                            .onChange(of: settingsManager.autoSaveRoutes) { _, newValue in
+                                hapticManager.toggle()
+                            }
                     }
                     .padding(.vertical, 4)
                     
@@ -350,33 +367,6 @@ struct SettingsView: View {
     }
 }
 
-// MARK: - Supporting Enums
-
-enum ThemePreference: String, CaseIterable {
-    case light = "light"
-    case dark = "dark"
-    case system = "system"
-    
-    var displayName: String {
-        switch self {
-        case .light: return "Light"
-        case .dark: return "Dark"
-        case .system: return "Follow System"
-        }
-    }
-}
-
-enum DistanceUnit: String, CaseIterable {
-    case miles = "miles"
-    case kilometers = "kilometers"
-    
-    var displayName: String {
-        switch self {
-        case .miles: return "Miles"
-        case .kilometers: return "Kilometers"
-        }
-    }
-}
 
 // MARK: - Placeholder Views for Terms & Privacy
 

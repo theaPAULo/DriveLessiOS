@@ -15,6 +15,10 @@ struct DriveLessApp: App {
     
     // Theme manager instance (ADD THIS)
     @StateObject private var themeManager = ThemeManager()
+    @StateObject private var hapticManager = HapticManager()  // ADD THIS LINE
+    @StateObject private var settingsManager = SettingsManager()  // ADD THIS LINE
+
+
     
     var body: some Scene {
         WindowGroup {
@@ -22,6 +26,10 @@ struct DriveLessApp: App {
                 .environment(\.managedObjectContext, coreDataManager.viewContext)
                 .environmentObject(coreDataManager)
                 .environmentObject(themeManager)  // ADD THIS LINE
+                .environmentObject(hapticManager)  // ADD THIS LINE
+                .environmentObject(settingsManager)  // ADD THIS LINE
+
+
                 .onAppear {
                     // Hide navigation bars globally while keeping swipe gestures
                     UINavigationBar.appearance().isHidden = true
