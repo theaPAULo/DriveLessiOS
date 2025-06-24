@@ -249,6 +249,20 @@ class RouteHistoryManager: ObservableObject {
             print("❌ Failed to remove favorite: \(error)")
         }
     }
+    
+    /// Removes favorite status directly from a SavedRoute object
+    /// - Parameter savedRoute: The SavedRoute to unfavorite
+    func removeFavoriteByRoute(_ savedRoute: SavedRoute) {
+        let context = coreDataManager.viewContext
+        
+        // Directly set the isFavorite flag to false on the existing object
+        savedRoute.isFavorite = false
+        
+        // Save the context
+        coreDataManager.save()
+        
+        print("💔 Removed favorite status for route: \(savedRoute.routeName ?? "Unnamed")")
+    }
 
     /// Fetches all favorite routes
     /// - Returns: Array of favorite SavedRoute objects

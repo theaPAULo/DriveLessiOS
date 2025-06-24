@@ -2,40 +2,44 @@
 //  FavoriteRoutesView.swift
 //  DriveLess
 //
-//  View for managing and accessing favorite routes
+//  Displays saved favorite routes with ability to reload and unfavorite routes
 //
 
 import SwiftUI
+import CoreData
 
 struct FavoriteRoutesView: View {
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var routeHistoryManager = RouteHistoryManager()
+    @ObservedObject var routeHistoryManager: RouteHistoryManager
+    
+    // MAKE THIS @State INSTEAD OF LET TO ALLOW UPDATES
     @State private var favoriteRoutes: [SavedRoute] = []
     
-    // Callback when route is selected
-    let onRouteSelected: (RouteData) -> Void
+    let onRouteSelected: (RouteData) -> Void  // Callback when user selects a route
     
-    // MARK: - Color Theme
+    // MARK: - Color Theme (Earthy - matching app theme)
     private let primaryGreen = Color(red: 0.2, green: 0.4, blue: 0.2)
+    private let accentBrown = Color(red: 0.4, green: 0.3, blue: 0.2)
     private let lightGreen = Color(red: 0.7, green: 0.8, blue: 0.7)
     
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
+                
+                // MARK: - Header Stats
+                if !favoriteRoutes.isEmpty {
+                    headerStatsView
+                        .padding(.horizontal, 20)
+                        .padding(.top, 10)
+                }
+                
+                // MARK: - Route List
                 if favoriteRoutes.isEmpty {
                     emptyStateView
                 } else {
-                    VStack(spacing: 16) {
-                        // Header stats
-                        headerStatsView
-                        
-                        // Route list
-                        routeListView
-                    }
-                    .padding(.top, 16)
+                    routeListView
                 }
             }
-            .background(Color(.systemGroupedBackground))
             .navigationTitle("Favorite Routes")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
@@ -54,7 +58,7 @@ struct FavoriteRoutesView: View {
     
     // MARK: - Header Stats
     private var headerStatsView: some View {
-        HStack(spacing: 20) {
+        HStack {
             VStack {
                 Text("\(favoriteRoutes.count)")
                     .font(.title2)
@@ -149,12 +153,20 @@ struct FavoriteRoutesView: View {
     
     private func loadFavoriteRoutes() {
         favoriteRoutes = routeHistoryManager.loadFavoriteRoutes()
+        print("🔄 Loaded \(favoriteRoutes.count) favorite routes")
     }
     
+    // FIXED: Properly handle unfavorite with immediate UI update
     private func unfavoriteRoute(_ route: SavedRoute) {
-        let routeData = routeHistoryManager.convertToRouteData(route)
-        routeHistoryManager.removeFavorite(routeData)
-        loadFavoriteRoutes() // Refresh the list
+        print("💔 Unfavoriting route: \(route.routeName ?? "Unnamed")")
+        
+        // FIXED: Directly unfavorite the SavedRoute object instead of searching for it
+        routeHistoryManager.removeFavoriteByRoute(route)
+        
+        // IMMEDIATELY update the UI by refreshing the list
+        loadFavoriteRoutes()
+        
+        print("✅ Route unfavorited and UI updated")
     }
     
     // MARK: - Computed Properties
@@ -238,14 +250,17 @@ struct FavoriteRouteRow: View {
             }
             .buttonStyle(PlainButtonStyle())
             
-            // Unfavorite button - separated and clearly clickable
+            // FIXED: More prominent unfavorite button with better styling
             Button(action: onUnfavorite) {
                 Image(systemName: "heart.slash.fill")
                     .font(.system(size: 18, weight: .medium))
                     .foregroundColor(.white)
-                    .padding(10)
-                    .background(Color.red)
-                    .cornerRadius(10)
+                    .padding(12)
+                    .background(
+                        Circle()
+                            .fill(Color.red)
+                            .shadow(color: .red.opacity(0.3), radius: 2, x: 0, y: 1)
+                    )
             }
             .buttonStyle(PlainButtonStyle())
         }
@@ -261,5 +276,8 @@ struct FavoriteRouteRow: View {
 }
 
 #Preview {
-    FavoriteRoutesView(onRouteSelected: { _ in })
+    FavoriteRoutesView(
+        routeHistoryManager: RouteHistoryManager(),
+        onRouteSelected: { _ in }
+    )
 }

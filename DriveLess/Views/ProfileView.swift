@@ -75,9 +75,11 @@ struct ProfileView: View {
             SavedAddressesView(savedAddressManager: savedAddressManager)
         }
         .sheet(isPresented: $showingFavoriteRoutes) {
-            FavoriteRoutesView(onRouteSelected: { routeData in
-                // Use RouteLoader to navigate to Search tab with this route
-                routeLoader.loadRoute(routeData)
+            FavoriteRoutesView(
+                routeHistoryManager: routeHistoryManager,
+                onRouteSelected: { routeData in
+                    // Use RouteLoader to navigate to Search tab with this route
+                    routeLoader.loadRoute(routeData)
                 
                 // Close the favorite routes sheet
                 showingFavoriteRoutes = false
