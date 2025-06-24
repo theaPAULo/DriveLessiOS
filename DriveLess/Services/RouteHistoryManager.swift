@@ -136,6 +136,162 @@ class RouteHistoryManager: ObservableObject {
         print("🗑️ Deleted route: \(route.routeName ?? "Unnamed Route")")
     }
     
+    
+    // MARK: - Favorite Routes Management
+
+    /// Saves a route as a favorite (also saves to history if not already saved)
+    /// - Parameter routeData: The route data to save as favorite
+    func saveFavoriteRoute(_ routeData: RouteData) {
+        let context = coreDataManager.viewContext
+        
+        // Check if this route already exists in history
+        let request: NSFetchRequest<SavedRoute> = SavedRoute.fetchRequest()
+        request.predicate = NSPredicate(format: "startLocation == %@ AND endLocation == %@ AND totalDistance == %@",
+                                       routeData.startLocation,
+                                       routeData.endLocation,
+                                       routeData.totalDistance)
+        
+        do {
+            let existingRoutes = try context.fetch(request)
+            
+            if let existingRoute = existingRoutes.first {
+                // Route exists, just mark as favorite
+                existingRoute.isFavorite = true
+                print("⭐ Marked existing route as favorite")
+            } else {
+                // Route doesn't exist, create new one and mark as favorite
+                let savedRoute = SavedRoute(context: context)
+                
+                // Set all the standard properties (same as saveRoute method)
+                savedRoute.id = UUID()
+                savedRoute.startLocation = routeData.startLocation
+                savedRoute.endLocation = routeData.endLocation
+                savedRoute.totalDistance = routeData.totalDistance
+                savedRoute.estimatedTime = routeData.estimatedTime
+                savedRoute.createdDate = Date()
+                savedRoute.considerTraffic = routeData.considerTraffic
+                savedRoute.isFavorite = true  // Mark as favorite
+                
+                // Store display names
+                if !routeData.optimizedStops.isEmpty {
+                    let startStop = routeData.optimizedStops.first
+                    let endStop = routeData.optimizedStops.last
+                    
+                    savedRoute.startLocationDisplayName = startStop?.name ?? extractBusinessName(routeData.startLocation)
+                    savedRoute.endLocationDisplayName = endStop?.name ?? extractBusinessName(routeData.endLocation)
+                    
+                    // Save stop display names as JSON
+                    let stopDisplayNames = routeData.optimizedStops
+                        .dropFirst()
+                        .dropLast()
+                        .map { $0.name ?? extractBusinessName($0.address) }
+                    
+                    if !stopDisplayNames.isEmpty {
+                        do {
+                            let displayNamesData = try JSONEncoder().encode(stopDisplayNames)
+                            savedRoute.stopDisplayNames = String(data: displayNamesData, encoding: .utf8)
+                        } catch {
+                            print("❌ Failed to encode stop display names: \(error)")
+                        }
+                    }
+                } else {
+                    savedRoute.startLocationDisplayName = extractBusinessName(routeData.startLocation)
+                    savedRoute.endLocationDisplayName = extractBusinessName(routeData.endLocation)
+                }
+                
+                // Convert stops array to JSON
+                if !routeData.stops.isEmpty {
+                    do {
+                        let stopsData = try JSONEncoder().encode(routeData.stops)
+                        savedRoute.stops = String(data: stopsData, encoding: .utf8)
+                    } catch {
+                        print("❌ Failed to encode stops: \(error)")
+                        savedRoute.stops = routeData.stops.joined(separator: "|||")
+                    }
+                }
+                
+                // Generate route name
+                savedRoute.routeName = generateRouteName(for: routeData)
+                
+                print("⭐ Created new favorite route")
+            }
+            
+            coreDataManager.save()
+            
+        } catch {
+            print("❌ Failed to save favorite route: \(error)")
+        }
+    }
+
+    /// Removes favorite status from a route
+    /// - Parameter routeData: The route data to unfavorite
+    func removeFavorite(_ routeData: RouteData) {
+        let context = coreDataManager.viewContext
+        
+        let request: NSFetchRequest<SavedRoute> = SavedRoute.fetchRequest()
+        request.predicate = NSPredicate(format: "startLocation == %@ AND endLocation == %@ AND totalDistance == %@",
+                                       routeData.startLocation,
+                                       routeData.endLocation,
+                                       routeData.totalDistance)
+        
+        do {
+            let routes = try context.fetch(request)
+            
+            for route in routes {
+                route.isFavorite = false
+            }
+            
+            coreDataManager.save()
+            print("💔 Removed favorite status")
+            
+        } catch {
+            print("❌ Failed to remove favorite: \(error)")
+        }
+    }
+
+    /// Fetches all favorite routes
+    /// - Returns: Array of favorite SavedRoute objects
+    func loadFavoriteRoutes() -> [SavedRoute] {
+        let context = coreDataManager.viewContext
+        let request: NSFetchRequest<SavedRoute> = SavedRoute.fetchRequest()
+        
+        // Only fetch favorites
+        request.predicate = NSPredicate(format: "isFavorite == YES")
+        
+        // Sort by creation date, newest first
+        request.sortDescriptors = [NSSortDescriptor(keyPath: \SavedRoute.createdDate, ascending: false)]
+        
+        do {
+            let favoriteRoutes = try context.fetch(request)
+            print("⭐ Loaded \(favoriteRoutes.count) favorite routes")
+            return favoriteRoutes
+        } catch {
+            print("❌ Failed to load favorite routes: \(error)")
+            return []
+        }
+    }
+
+    /// Checks if a route is already favorited
+    /// - Parameter routeData: The route data to check
+    /// - Returns: True if the route is favorited
+    func isRouteFavorited(_ routeData: RouteData) -> Bool {
+        let context = coreDataManager.viewContext
+        
+        let request: NSFetchRequest<SavedRoute> = SavedRoute.fetchRequest()
+        request.predicate = NSPredicate(format: "startLocation == %@ AND endLocation == %@ AND totalDistance == %@ AND isFavorite == YES",
+                                       routeData.startLocation,
+                                       routeData.endLocation,
+                                       routeData.totalDistance)
+        
+        do {
+            let count = try context.count(for: request)
+            return count > 0
+        } catch {
+            print("❌ Failed to check favorite status: \(error)")
+            return false
+        }
+    }
+    
     // MARK: - Convert SavedRoute back to RouteData
     
     // MARK: - Convert SavedRoute back to RouteData

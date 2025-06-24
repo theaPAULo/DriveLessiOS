@@ -16,6 +16,7 @@
         <attribute name="endLocationDisplayName" optional="YES" attributeType="String"/>
         <attribute name="estimatedTime" attributeType="String"/>
         <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="isFavorite" attributeType="Boolean" usesScalarValueType="YES"/>
         <attribute name="routeName" optional="YES" attributeType="String"/>
         <attribute name="startLocation" attributeType="String"/>
         <attribute name="startLocationDisplayName" optional="YES" attributeType="String"/>
@@ -27,7 +28,7 @@
     <entity name="UsageTracking" representedClassName="UsageTracking" syncable="YES">
         <attribute name="date" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
-        <attribute name="routeCalculations" attributeType="Integer 32" defaultValue="0" usesScalarValueType="YES"/>
+        <attribute name="routeCalculations" attributeType="Integer 32" usesScalarValueType="YES"/>
         <attribute name="userID" optional="YES" attributeType="String"/>
     </entity>
 </model>

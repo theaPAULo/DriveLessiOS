@@ -14,7 +14,11 @@ struct RouteResultsView: View {
     @State private var isLoading = true
     @State private var optimizedRoute: RouteData
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject var settingsManager: SettingsManager  // ADD THIS LINE
+    @EnvironmentObject var settingsManager: SettingsManager
+    @EnvironmentObject var hapticManager: HapticManager  // ADD THIS LINE
+
+    @State private var isFavorite: Bool = false  // ADD THIS LINE
+    @State private var showingSaveConfirmation: Bool = false  // ADD THIS LINE
 
     
     // Add these new state variables for real route data
@@ -85,6 +89,9 @@ struct RouteResultsView: View {
                 }
         )
         .onAppear {
+        // Check if this route is already favorited
+            let routeHistoryManager = RouteHistoryManager()
+            isFavorite = routeHistoryManager.isRouteFavorited(optimizedRoute)
             calculateRealRoute()
         }
         .alert("Daily Limit Reached", isPresented: $showingUsageLimitAlert) {
@@ -312,7 +319,28 @@ struct RouteResultsView: View {
     
     private var actionButtonsView: some View {
         VStack(spacing: 12) {
+            // Top row: Star button and navigation buttons
             HStack(spacing: 12) {
+                // Star/Heart button to save as favorite
+                Button(action: toggleFavorite) {
+                    HStack {
+                        Image(systemName: isFavorite ? "heart.fill" : "heart")
+                            .foregroundColor(isFavorite ? .red : .gray)
+                        Text(isFavorite ? "Saved" : "Save Route")
+                            .foregroundColor(isFavorite ? .red : .primary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(isFavorite ? Color.red.opacity(0.1) : Color(.systemGray6))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(isFavorite ? Color.red : Color.clear, lineWidth: 1)
+                            )
+                    )
+                }
+                
                 Button(action: openGoogleMaps) {
                     HStack {
                         Image(systemName: "map")
@@ -320,23 +348,29 @@ struct RouteResultsView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(Color.green)
-                    .foregroundColor(.white)
-                    .cornerRadius(10)
-                }
-                
-                Button(action: openAppleMaps) {
-                    HStack {
-                        Image(systemName: "map.fill")
-                        Text("Apple Maps")
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.orange)
-                    .foregroundColor(.white)
-                    .cornerRadius(10)
+                    .background(Color.blue.opacity(0.1))
+                    .foregroundColor(.blue)
+                    .cornerRadius(12)
                 }
             }
+            
+            // Bottom row: Apple Maps button
+            Button(action: openAppleMaps) {
+                HStack {
+                    Image(systemName: "map.fill")
+                    Text("Apple Maps")
+                }
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(Color.green.opacity(0.1))
+                .foregroundColor(.green)
+                .cornerRadius(12)
+            }
+        }
+        .alert("Route Saved", isPresented: $showingSaveConfirmation) {
+            Button("OK") { }
+        } message: {
+            Text("This route has been saved to your favorites for easy access!")
         }
     }
     
@@ -418,10 +452,14 @@ struct RouteResultsView: View {
                         self.isLoading = false
                     }
                     
-                    // 📚 AUTO-SAVE ROUTE TO HISTORY
-                    // Save the completed route to history for later reference
-                    let routeHistoryManager = RouteHistoryManager()
-                    routeHistoryManager.saveRoute(self.optimizedRoute)
+                    // 📚 AUTO-SAVE ROUTE TO HISTORY (Only if setting is enabled)
+                    if settingsManager.autoSaveRoutes {
+                        let routeHistoryManager = RouteHistoryManager()
+                        routeHistoryManager.saveRoute(self.optimizedRoute)
+                        print("✅ Route auto-saved to history")
+                    } else {
+                        print("⏭️ Auto-save disabled - route not saved to history")
+                    }
                     
                 case .failure(let error):
                     print("❌ Route calculation failed: \(error.localizedDescription)")
@@ -549,6 +587,29 @@ struct RouteResultsView: View {
     
     // MARK: - Distance Formatting
 
+    
+    // MARK: - Favorite Functionality
+
+    /// Toggle favorite status and save/remove from favorites
+    private func toggleFavorite() {
+        let routeHistoryManager = RouteHistoryManager()
+        
+        if isFavorite {
+            // Remove from favorites
+            routeHistoryManager.removeFavorite(optimizedRoute)
+            isFavorite = false
+            hapticManager.impact(.light)
+            print("💔 Route removed from favorites")
+        } else {
+            // Add to favorites (this will also save to history if auto-save is off)
+            routeHistoryManager.saveFavoriteRoute(optimizedRoute)
+            isFavorite = true
+            hapticManager.success()
+            showingSaveConfirmation = true
+            print("❤️ Route saved to favorites")
+        }
+    }
+    
     /// Converts distance string from miles to user's preferred unit
     private func formatDistanceForDisplay(_ distanceString: String) -> String {
         // Extract the numeric value from strings like "25.0 miles" or "10.5 mi"
