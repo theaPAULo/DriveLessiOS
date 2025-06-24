@@ -5,23 +5,26 @@
 //  Created by Paul Soni on 6/19/25.
 //
 
-
 //
 //  RouteCalculator.swift
 //  DriveLess
 //
-//  Real route optimization using Google Directions API
+//  Real route optimization using Google Directions API - UPDATED to preserve business names
 //
 
 import Foundation
 import GoogleMaps
 import CoreLocation
 
-// Add this struct after the imports
+// UPDATED: Enhanced struct to preserve original business names
 struct OriginalRouteInputs {
     let startLocation: String
     let endLocation: String
     let stops: [String]
+    // NEW: Add display names to preserve business names the user actually searched for
+    let startLocationDisplayName: String
+    let endLocationDisplayName: String
+    let stopDisplayNames: [String]
 }
 
 class RouteCalculator: ObservableObject {
@@ -30,20 +33,25 @@ class RouteCalculator: ObservableObject {
     
     /**
      * Calculate optimized route using Google Directions API
-     * This mimics the web app's calculateOptimizedRoute function
+     * UPDATED: Now accepts business names to preserve user's original search terms
      */
     static func calculateOptimizedRoute(
         startLocation: String,
-        endLocation: String, 
+        endLocation: String,
         stops: [String],
         considerTraffic: Bool,
+        // NEW: Add parameters for business names
+        startLocationDisplayName: String = "",
+        endLocationDisplayName: String = "",
+        stopDisplayNames: [String] = [],
         completion: @escaping (Result<OptimizedRouteResult, Error>) -> Void
     ) {
         
         print("🗺️ Starting real route optimization...")
-        print("📍 Start: \(startLocation)")
+        print("📍 Start: \(startLocation) (Display: '\(startLocationDisplayName)')")
         print("📍 Stops: \(stops)")
-        print("📍 End: \(endLocation)")
+        print("📍 Stop Display Names: \(stopDisplayNames)")
+        print("📍 End: \(endLocation) (Display: '\(endLocationDisplayName)')")
         print("🚗 Consider traffic: \(considerTraffic)")
         
         // Create waypoints for Google Directions API
@@ -93,19 +101,20 @@ class RouteCalculator: ObservableObject {
             }
             
             // Parse the response
-            // Parse the response
             do {
                 let result = try JSONDecoder().decode(DirectionsResponse.self, from: data)
                 
                 if result.status == "OK", !result.routes.isEmpty {
                     print("✅ Route calculation successful!")
                     
-                    // Process the route data
-                    // Process the route data - pass original inputs to preserve business names
+                    // UPDATED: Pass original business names to preserve them
                     let originalInputs = OriginalRouteInputs(
                         startLocation: startLocation,
                         endLocation: endLocation,
-                        stops: stops
+                        stops: stops,
+                        startLocationDisplayName: startLocationDisplayName,
+                        endLocationDisplayName: endLocationDisplayName,
+                        stopDisplayNames: stopDisplayNames
                     )
                     let optimizedResult = processDirectionsResponse(result, considerTraffic: considerTraffic, originalInputs: originalInputs)
                     completion(.success(optimizedResult))
@@ -165,33 +174,49 @@ class RouteCalculator: ObservableObject {
             durationText = "\(totalDurationMinutes) min"
         }
         
-        // Create optimized stops in the correct order
+        // UPDATED: Create optimized stops preserving original business names
         var optimizedStops: [RouteStop] = []
         
-        // Get waypoint order for later use
+        // Get waypoint order for mapping optimized route back to original inputs
         let routeWaypointOrder = route.waypoint_order ?? []
-                
-        // Add start location (preserve original business name)
+        
+        // Add start location - use original business name if available
+        let startDisplayName = !originalInputs.startLocationDisplayName.isEmpty ?
+            originalInputs.startLocationDisplayName :
+            extractBusinessName(legs.first?.start_address ?? "")
+        
         optimizedStops.append(RouteStop(
             address: legs.first?.start_address ?? "",
-            name: originalInputs.startLocation,  // Use original business name
-            originalInput: originalInputs.startLocation,
+            name: startDisplayName,  // PRESERVE original business name
+            originalInput: originalInputs.startLocationDisplayName,
             type: .start,
             distance: nil,
             duration: nil
         ))
 
-        // Add waypoints in optimized order (preserve original business names)
-        for (index, leg) in legs.enumerated() {
-            if index < legs.count - 1 { // Don't add the final destination as a stop
-                // Get the original stop name based on waypoint order
-                let waypointIndex = routeWaypointOrder.count > index ? routeWaypointOrder[index] : index
-                let originalStopName = waypointIndex < originalInputs.stops.count ? originalInputs.stops[waypointIndex] : leg.end_address
+        print("🏪 Added START with business name: '\(startDisplayName)'")
+
+        // Add waypoints in optimized order - PRESERVE original business names
+        for (legIndex, leg) in legs.enumerated() {
+            if legIndex < legs.count - 1 { // Don't add the final destination as a stop
+                // Map this leg back to the original input using waypoint order
+                let originalStopIndex = legIndex < routeWaypointOrder.count ? routeWaypointOrder[legIndex] : legIndex
+                
+                // Get the original business name the user searched for
+                let originalStopDisplayName: String
+                if originalStopIndex < originalInputs.stopDisplayNames.count && !originalInputs.stopDisplayNames[originalStopIndex].isEmpty {
+                    originalStopDisplayName = originalInputs.stopDisplayNames[originalStopIndex]
+                    print("🏪 Using ORIGINAL business name for stop \(legIndex): '\(originalStopDisplayName)'")
+                } else {
+                    // Fallback to extracted name from address
+                    originalStopDisplayName = extractBusinessName(leg.end_address)
+                    print("⚠️ Using EXTRACTED name for stop \(legIndex): '\(originalStopDisplayName)'")
+                }
                 
                 optimizedStops.append(RouteStop(
                     address: leg.end_address,
-                    name: originalStopName,  // Use original business name
-                    originalInput: originalStopName,
+                    name: originalStopDisplayName,  // PRESERVE original business name
+                    originalInput: originalStopIndex < originalInputs.stopDisplayNames.count ? originalInputs.stopDisplayNames[originalStopIndex] : "",
                     type: .stop,
                     distance: String(format: "%.1f mi", Double(leg.distance.value) / 1609.34),
                     duration: "\(leg.duration.value / 60) min"
@@ -199,15 +224,21 @@ class RouteCalculator: ObservableObject {
             }
         }
 
-        // Add end location (preserve original business name)
+        // Add end location - use original business name if available
+        let endDisplayName = !originalInputs.endLocationDisplayName.isEmpty ?
+            originalInputs.endLocationDisplayName :
+            extractBusinessName(legs.last?.end_address ?? "")
+        
         optimizedStops.append(RouteStop(
             address: legs.last?.end_address ?? "",
-            name: originalInputs.endLocation,  // Use original business name
-            originalInput: originalInputs.endLocation,
+            name: endDisplayName,  // PRESERVE original business name
+            originalInput: originalInputs.endLocationDisplayName,
             type: .end,
             distance: nil,
             duration: nil
         ))
+
+        print("🏪 Added END with business name: '\(endDisplayName)'")
         
         return OptimizedRouteResult(
             totalDistance: "\(totalDistanceMiles) miles",
@@ -226,7 +257,7 @@ class RouteCalculator: ObservableObject {
     }
 }
 
-// MARK: - Data Models
+// MARK: - Data Models (unchanged)
 
 struct OptimizedRouteResult {
     let totalDistance: String
@@ -237,7 +268,7 @@ struct OptimizedRouteResult {
     let waypointOrder: [Int]
 }
 
-// MARK: - Google Directions API Response Models
+// MARK: - Google Directions API Response Models (unchanged)
 
 struct DirectionsResponse: Codable {
     let status: String
@@ -279,7 +310,7 @@ struct OverviewPolyline: Codable {
     let points: String
 }
 
-// MARK: - Error Types
+// MARK: - Error Types (unchanged)
 
 enum RouteCalculationError: Error, LocalizedError {
     case invalidURL

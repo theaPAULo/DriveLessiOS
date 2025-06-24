@@ -183,53 +183,43 @@ struct RouteResultsView: View {
         if !routeLegs.isEmpty {
             print("📍 Using real coordinates from API response")
             
-            // Add start location
-            let firstLeg = routeLegs.first!
-            waypoints.append(RouteStop(
-                address: firstLeg.start_address,
-                name: extractBusinessName(firstLeg.start_address),
-                originalInput: firstLeg.start_address,
-                type: .start,
-                distance: nil,
-                duration: nil
-            ))
-            coordinates.append(CLLocationCoordinate2D(
-                latitude: firstLeg.start_location.lat,
-                longitude: firstLeg.start_location.lng
-            ))
+            // FIXED: Use the optimized route data (which has preserved business names)
+            // instead of recreating from API legs
             
-            // Add intermediate stops
-            for (index, leg) in routeLegs.enumerated() {
-                if index < routeLegs.count - 1 { // Don't add final destination as stop
-                    waypoints.append(RouteStop(
-                        address: leg.end_address,
-                        name: extractBusinessName(leg.end_address),
-                        originalInput: leg.end_address,
-                        type: .stop,
-                        distance: leg.distance.text,
-                        duration: leg.duration.text
-                    ))
-                    coordinates.append(CLLocationCoordinate2D(
-                        latitude: leg.end_location.lat,
-                        longitude: leg.end_location.lng
-                    ))
+            for (index, optimizedStop) in optimizedRoute.optimizedStops.enumerated() {
+                // Get coordinates from the corresponding leg
+                let coordinate: CLLocationCoordinate2D
+                if index == 0 {
+                    // Start location - use start of first leg
+                    coordinate = CLLocationCoordinate2D(
+                        latitude: routeLegs.first?.start_location.lat ?? 0,
+                        longitude: routeLegs.first?.start_location.lng ?? 0
+                    )
+                } else if index == optimizedRoute.optimizedStops.count - 1 {
+                    // End location - use end of last leg
+                    coordinate = CLLocationCoordinate2D(
+                        latitude: routeLegs.last?.end_location.lat ?? 0,
+                        longitude: routeLegs.last?.end_location.lng ?? 0
+                    )
+                } else {
+                    // Middle stops - use end of corresponding leg
+                    let legIndex = index - 1
+                    if legIndex < routeLegs.count {
+                        coordinate = CLLocationCoordinate2D(
+                            latitude: routeLegs[legIndex].end_location.lat,
+                            longitude: routeLegs[legIndex].end_location.lng
+                        )
+                    } else {
+                        coordinate = CLLocationCoordinate2D(latitude: 0, longitude: 0)
+                    }
                 }
+                
+                // Use the optimized stop data (which preserves business names)
+                waypoints.append(optimizedStop)
+                coordinates.append(coordinate)
+                
+                print("📍 MAP: Added waypoint \(index): '\(optimizedStop.name)' at \(coordinate.latitude), \(coordinate.longitude)")
             }
-            
-            // Add end location
-            let lastLeg = routeLegs.last!
-            waypoints.append(RouteStop(
-                address: lastLeg.end_address,
-                name: extractBusinessName(lastLeg.end_address),
-                originalInput: lastLeg.end_address,
-                type: .end,
-                distance: nil,
-                duration: nil
-            ))
-            coordinates.append(CLLocationCoordinate2D(
-                latitude: lastLeg.end_location.lat,
-                longitude: lastLeg.end_location.lng
-            ))
             
             return MapRouteData(
                 waypoints: waypoints,
@@ -245,7 +235,6 @@ struct RouteResultsView: View {
             return MapRouteData.mockRouteData(from: optimizedRoute)
         }
     }
-    
     
         
         // Helper function to convert optimized route back to RouteData format
@@ -408,12 +397,33 @@ struct RouteResultsView: View {
         
         print("✅ Usage check passed: \(usageTracker.todayUsage)/\(UsageTrackingManager.DAILY_LIMIT)")
         
-        // Use the real route calculator
+        // Extract business names from the optimized stops (preserves user's original search terms)
+        let startDisplayName = routeData.optimizedStops.first?.name ?? ""
+        let endDisplayName = routeData.optimizedStops.last?.name ?? ""
+        let stopDisplayNames = Array(routeData.optimizedStops.dropFirst().dropLast()).map { $0.name }
+
+        // ADD THIS DEBUG LOGGING:
+        print("🔍 DEBUG: RouteData optimizedStops before API call:")
+        for (index, stop) in routeData.optimizedStops.enumerated() {
+            print("🔍   Stop \(index): name='\(stop.name)', address='\(stop.address)', originalInput='\(stop.originalInput)'")
+        }
+
+        print("🏪 Passing business names to API:")
+        print("🏪 Start: '\(startDisplayName)'")
+        print("🏪 End: '\(endDisplayName)'")
+        print("🏪 Stops: \(stopDisplayNames)")
+            
+
+        // Use the real route calculator - NOW WITH BUSINESS NAMES
         RouteCalculator.calculateOptimizedRoute(
             startLocation: routeData.startLocation,
             endLocation: routeData.endLocation,
             stops: routeData.stops,
-            considerTraffic: routeData.considerTraffic
+            considerTraffic: routeData.considerTraffic,
+            // NEW: Pass the original business names the user searched for
+            startLocationDisplayName: startDisplayName,
+            endLocationDisplayName: endDisplayName,
+            stopDisplayNames: stopDisplayNames
         ) { result in
             DispatchQueue.main.async {
                 switch result {
