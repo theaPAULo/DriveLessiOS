@@ -207,7 +207,7 @@ struct GoogleMapsView: UIViewRepresentable {
                 
                 let polyline = GMSPolyline(path: path)
                 polyline.strokeColor = UIColor.systemBlue
-                polyline.strokeWidth = 6.0
+                polyline.strokeWidth = 3.0
                 polyline.map = mapView
                 print("📍 Drew real route with \(decodedCoordinates.count) points")
             } else {
@@ -219,7 +219,7 @@ struct GoogleMapsView: UIViewRepresentable {
                     
                     let polyline = GMSPolyline(path: path)
                     polyline.strokeColor = UIColor.systemRed
-                    polyline.strokeWidth = 4.0
+                    polyline.strokeWidth = 3.0
                     polyline.map = mapView
                 }
             }
@@ -230,7 +230,7 @@ struct GoogleMapsView: UIViewRepresentable {
             
             let polyline = GMSPolyline(path: path)
             polyline.strokeColor = UIColor.systemRed
-            polyline.strokeWidth = 4.0
+            polyline.strokeWidth = 3.0
             polyline.map = mapView
         }
         
