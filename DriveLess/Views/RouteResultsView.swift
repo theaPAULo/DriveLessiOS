@@ -21,6 +21,9 @@ struct RouteResultsView: View {
     @State private var showingSaveConfirmation: Bool = false  // ADD THIS LINE
     @State private var showingNameRouteAlert: Bool = false  // ADD THIS LINE
     @State private var routeName: String = ""              // ADD THIS LINE
+    
+    // ADD THIS NEW STATE VARIABLE TO CACHE MAP DATA
+    @State private var cachedMapRouteData: MapRouteData?
 
     
     // Add these new state variables for real route data
@@ -151,11 +154,25 @@ struct RouteResultsView: View {
     
 
     private var interactiveMapView: some View {
-        GoogleMapsView(routeData: createMapRouteData())
-                .frame(height: 350) // Optimal height for mobile viewing
-                .cornerRadius(12)
-                .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+        Group {
+            if let mapData = cachedMapRouteData {
+                GoogleMapsView(routeData: mapData)
+                    .frame(height: 350)
+                    .cornerRadius(12)
+                    .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+            } else {
+                // Fallback while loading
+                Rectangle()
+                    .fill(Color(.systemGray6))
+                    .frame(height: 350)
+                    .cornerRadius(12)
+                    .overlay(
+                        ProgressView()
+                            .scaleEffect(1.2)
+                    )
+            }
         }
+    }
         
     // Helper function to create map data from current route with real coordinates
     private func createMapRouteData() -> MapRouteData {
@@ -204,7 +221,7 @@ struct RouteResultsView: View {
             waypoints.append(RouteStop(
                 address: lastLeg.end_address,
                 name: extractBusinessName(lastLeg.end_address),
-                originalInput: lastLeg.end_address,  // Added missing parameter
+                originalInput: lastLeg.end_address,
                 type: .end,
                 distance: nil,
                 duration: nil
@@ -459,6 +476,10 @@ struct RouteResultsView: View {
                         print("📍 Leg \(index): Start(\(leg.start_location.lat), \(leg.start_location.lng)) -> End(\(leg.end_location.lat), \(leg.end_location.lng))")
                     }
                     
+                    // CACHE THE MAP DATA HERE - ADD THIS NEW CODE
+                    self.cachedMapRouteData = self.createMapRouteData()
+                    print("📍 Cached map route data to prevent recreation")
+                    
                     withAnimation {
                         self.isLoading = false
                     }
@@ -523,6 +544,9 @@ struct RouteResultsView: View {
         optimizedRoute.optimizedStops = mockStops
         optimizedRoute.totalDistance = "25.0 miles"
         optimizedRoute.estimatedTime = "45 min"
+        
+        // CACHE THE MOCK DATA TOO - ADD THIS LINE
+        cachedMapRouteData = MapRouteData.mockRouteData(from: optimizedRoute)
         
         withAnimation {
             isLoading = false
