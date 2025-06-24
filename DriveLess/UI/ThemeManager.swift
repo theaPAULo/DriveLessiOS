@@ -2,7 +2,7 @@
 //  ThemeManager.swift
 //  DriveLess
 //
-//  Manages app-wide theme settings and appearance
+//  Enhanced theme manager with unified earthy color palette
 //
 
 import SwiftUI
@@ -39,6 +39,59 @@ enum ThemePreference: String, CaseIterable {
     }
 }
 
+// MARK: - Unified Color Palette
+struct DriveLessColors {
+    // MARK: - Core Earthy Palette
+    static let primaryGreen = Color(red: 0.2, green: 0.4, blue: 0.2) // Dark forest green
+    static let accentBrown = Color(red: 0.4, green: 0.3, blue: 0.2) // Rich brown
+    static let lightGreen = Color(red: 0.7, green: 0.8, blue: 0.7) // Soft green
+    static let warmBeige = Color(red: 0.9, green: 0.87, blue: 0.8) // Warm beige
+    static let forestGreen = Color(red: 0.13, green: 0.27, blue: 0.13) // Deep forest
+    static let oliveGreen = Color(red: 0.5, green: 0.6, blue: 0.4) // Olive green
+    
+    // MARK: - Light Mode Colors
+    struct Light {
+        static let background = Color(.systemGroupedBackground)
+        static let cardBackground = Color(.white)
+        static let secondaryBackground = Color(.systemGray6)
+        
+        static let primary = primaryGreen
+        static let secondary = accentBrown
+        static let accent = lightGreen
+        
+        static let textPrimary = Color(.label)
+        static let textSecondary = Color(.secondaryLabel)
+        static let textTertiary = Color(.tertiaryLabel)
+        
+        // Gradient backgrounds
+        static let gradientStart = forestGreen
+        static let gradientMid = primaryGreen
+        static let gradientAccent = oliveGreen
+        static let gradientEnd = accentBrown
+    }
+    
+    // MARK: - Dark Mode Colors
+    struct Dark {
+        static let background = Color(.systemGroupedBackground)
+        static let cardBackground = Color(.systemGray6)
+        static let secondaryBackground = Color(.systemGray5)
+        
+        static let primary = lightGreen
+        static let secondary = warmBeige
+        static let accent = oliveGreen
+        
+        static let textPrimary = Color(.label)
+        static let textSecondary = Color(.secondaryLabel)
+        static let textTertiary = Color(.tertiaryLabel)
+        
+        // Gradient backgrounds (darker variations)
+        static let gradientStart = Color(red: 0.1, green: 0.2, blue: 0.1) // Darker forest
+        static let gradientMid = Color(red: 0.15, green: 0.3, blue: 0.15) // Darker primary
+        static let gradientAccent = Color(red: 0.3, green: 0.4, blue: 0.2) // Darker olive
+        static let gradientEnd = Color(red: 0.3, green: 0.2, blue: 0.15) // Darker brown
+    }
+}
+
 class ThemeManager: ObservableObject {
     
     // MARK: - Published Properties
@@ -49,6 +102,66 @@ class ThemeManager: ObservableObject {
     }
     
     @Published var isDarkMode: Bool = false
+    
+    // MARK: - Computed Color Properties
+    var colors: DriveLessColors.Type {
+        return DriveLessColors.self
+    }
+    
+    var background: Color {
+        return isDarkMode ? DriveLessColors.Dark.background : DriveLessColors.Light.background
+    }
+    
+    var cardBackground: Color {
+        return isDarkMode ? DriveLessColors.Dark.cardBackground : DriveLessColors.Light.cardBackground
+    }
+    
+    var secondaryBackground: Color {
+        return isDarkMode ? DriveLessColors.Dark.secondaryBackground : DriveLessColors.Light.secondaryBackground
+    }
+    
+    var primary: Color {
+        return isDarkMode ? DriveLessColors.Dark.primary : DriveLessColors.Light.primary
+    }
+    
+    var secondary: Color {
+        return isDarkMode ? DriveLessColors.Dark.secondary : DriveLessColors.Light.secondary
+    }
+    
+    var accent: Color {
+        return isDarkMode ? DriveLessColors.Dark.accent : DriveLessColors.Light.accent
+    }
+    
+    var textPrimary: Color {
+        return isDarkMode ? DriveLessColors.Dark.textPrimary : DriveLessColors.Light.textPrimary
+    }
+    
+    var textSecondary: Color {
+        return isDarkMode ? DriveLessColors.Dark.textSecondary : DriveLessColors.Light.textSecondary
+    }
+    
+    var textTertiary: Color {
+        return isDarkMode ? DriveLessColors.Dark.textTertiary : DriveLessColors.Light.textTertiary
+    }
+    
+    // MARK: - Gradient Colors
+    var gradientColors: [Color] {
+        if isDarkMode {
+            return [
+                DriveLessColors.Dark.gradientStart,
+                DriveLessColors.Dark.gradientMid,
+                DriveLessColors.Dark.gradientAccent,
+                DriveLessColors.Dark.gradientEnd
+            ]
+        } else {
+            return [
+                DriveLessColors.Light.gradientStart,
+                DriveLessColors.Light.gradientMid,
+                DriveLessColors.Light.gradientAccent,
+                DriveLessColors.Light.gradientEnd
+            ]
+        }
+    }
     
     // MARK: - Initialization
     init() {
@@ -129,6 +242,33 @@ class ThemeManager: ObservableObject {
             let isCurrentlyDark = UITraitCollection.current.userInterfaceStyle == .dark
             setTheme(isCurrentlyDark ? .light : .dark)
         }
+    }
+    
+    // MARK: - Convenience Methods for Common UI Patterns
+    func buttonGradient(isPressed: Bool = false) -> LinearGradient {
+        let opacity = isPressed ? 0.8 : 1.0
+        return LinearGradient(
+            gradient: Gradient(colors: [primary.opacity(opacity), secondary.opacity(opacity)]),
+            startPoint: .leading,
+            endPoint: .trailing
+        )
+    }
+    
+    func cardShadow() -> Color {
+        return primary.opacity(isDarkMode ? 0.2 : 0.3)
+    }
+    
+    func animatedGradient(offset: CGFloat = 0) -> LinearGradient {
+        return LinearGradient(
+            gradient: Gradient(stops: [
+                .init(color: gradientColors[0], location: 0.0 + offset),
+                .init(color: gradientColors[1], location: 0.3 + offset),
+                .init(color: gradientColors[2], location: 0.6 + offset),
+                .init(color: gradientColors[3], location: 0.8 + offset)
+            ]),
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
     }
     
     deinit {
