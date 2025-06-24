@@ -716,7 +716,7 @@ struct RouteInputView: View {
                 locationManager.getCurrentLocation()
                 
                 // Wait a moment for location to be acquired
-                DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 10.5) {
                     if let location = locationManager.location {
                         reverseGeocodeLocation(location)
                     } else {
@@ -771,7 +771,7 @@ struct RouteInputView: View {
                 locationManager.getCurrentLocation()
                 
                 // Wait a moment for location to be acquired
-                DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 10.5) {
                     if let location = locationManager.location {
                         reverseGeocodeLocationForEnd(location)
                     } else {

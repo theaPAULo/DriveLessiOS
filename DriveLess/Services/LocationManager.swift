@@ -40,7 +40,7 @@ class LocationManager: NSObject, ObservableObject {
         locationManager.requestWhenInUseAuthorization()
     }
     
-    // Start getting current location (one-time request)
+    // Start getting current location (one-time request with retry logic)
     func getCurrentLocation() {
         print("🗺️ LocationManager: getCurrentLocation() called")
         print("🗺️ LocationManager: Current auth status: \(authorizationStatus)")
@@ -54,7 +54,19 @@ class LocationManager: NSObject, ObservableObject {
         print("🗺️ LocationManager: Starting location request...")
         isLoading = true
         errorMessage = nil
-        locationManager.requestLocation()
+        
+        // Use continuous updates for better reliability, then stop once we get a good location
+        locationManager.startUpdatingLocation()
+        
+        // Set a longer timeout for initial GPS acquisition
+        DispatchQueue.main.asyncAfter(deadline: .now() + 10.0) {
+            if self.isLoading {
+                print("⏰ LocationManager: Location request timed out after 10 seconds")
+                self.locationManager.stopUpdatingLocation()
+                self.isLoading = false
+                self.errorMessage = "Location request timed out. Please try again."
+            }
+        }
     }
     
     // Start continuous location updates
@@ -113,6 +125,18 @@ extension LocationManager: CLLocationManagerDelegate {
         
         print("📍 LocationManager: New location: \(newLocation.coordinate.latitude), \(newLocation.coordinate.longitude)")
         print("📍 LocationManager: Accuracy: \(newLocation.horizontalAccuracy)m")
+        
+        // Only accept locations with reasonable accuracy (within 100 meters)
+        guard newLocation.horizontalAccuracy <= 100 && newLocation.horizontalAccuracy > 0 else {
+            print("⚠️ LocationManager: Location accuracy too poor (\(newLocation.horizontalAccuracy)m), waiting for better location...")
+            return
+        }
+        
+        // Stop location updates once we have a good location (for getCurrentLocation requests)
+        if isLoading {
+            print("🛑 LocationManager: Stopping location updates after getting good location")
+            locationManager.stopUpdatingLocation()
+        }
         
         DispatchQueue.main.async {
             self.location = newLocation

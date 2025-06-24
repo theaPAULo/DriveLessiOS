@@ -334,21 +334,22 @@ struct AddAddressView: View {
 
     // MARK: - Helper function to check location and proceed
     private func checkLocationAndProceed() {
-        // Check if we already have a current location
-        if let location = locationManager.location {
-            print("📍 Using existing location: \(location.coordinate.latitude), \(location.coordinate.longitude)")
+        // Check if we already have a current location that's recent (within last 5 minutes)
+        if let location = locationManager.location,
+           location.timestamp.timeIntervalSinceNow > -300 { // 5 minutes = 300 seconds
+            print("📍 Using existing recent location: \(location.coordinate.latitude), \(location.coordinate.longitude)")
             reverseGeocodeLocation(location)
         } else {
             print("📍 Getting fresh location...")
             locationManager.getCurrentLocation()
             
-            // Wait for location to be acquired
-            DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+            // Increase timeout to match LocationManager's 10-second timeout
+            DispatchQueue.main.asyncAfter(deadline: .now() + 10.5) {
                 if let location = self.locationManager.location {
                     self.reverseGeocodeLocation(location)
                 } else {
                     self.isLoading = false
-                    self.errorMessage = "Unable to get your location. Please try again or enter address manually."
+                    self.errorMessage = "Unable to get your location. Please check that location services are enabled and try again."
                 }
             }
         }
