@@ -30,6 +30,7 @@ extension SavedRoute {
     @NSManaged public var totalDistance: String?
     @NSManaged public var waypointOrder: String?
     @NSManaged public var isFavorite: Bool
+    @NSManaged public var customName: String?
 
 }
 

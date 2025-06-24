@@ -76,6 +76,7 @@ struct RouteInputView: View {
             .navigationBarBackButtonHidden(true)
             .onAppear {
                 loadDefaultSettings()
+                
 
                 // Check if there's a route to load
                 if let routeToLoad = routeLoader.routeToLoad {
@@ -92,6 +93,20 @@ struct RouteInputView: View {
                 // This ensures we see updated usage when returning from RouteResultsView
                 usageTracker.loadTodayUsage()
                 print("📊 Refreshed usage tracking on Search tab appear")
+            }
+            .onChange(of: settingsManager.defaultRoundTrip) { _, newValue in
+                // Only apply if this is a fresh route (not loaded from history)
+                if startLocation.isEmpty && endLocation.isEmpty && stops.allSatisfy({ $0.isEmpty }) {
+                    isRoundTrip = newValue
+                    print("🔧 Applied default round trip setting: \(newValue)")
+                }
+            }
+            .onChange(of: settingsManager.defaultTrafficEnabled) { _, newValue in
+                // Only apply if this is a fresh route (not loaded from history)
+                if startLocation.isEmpty && endLocation.isEmpty && stops.allSatisfy({ $0.isEmpty }) {
+                    considerTraffic = newValue
+                    print("🔧 Applied default traffic setting: \(newValue)")
+                }
             }
             .navigationDestination(isPresented: $shouldNavigateToResults) {
                 if let routeData = routeDataForNavigation {

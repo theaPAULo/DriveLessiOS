@@ -19,6 +19,8 @@ struct ProfileView: View {
     @State private var showingAdminDashboard = false
     @State private var showingSignOutConfirmation = false
     @State private var showingSettings = false
+    @State private var showingFavoriteRoutes = false  // ADD THIS LINE
+
 
 
 
@@ -72,7 +74,15 @@ struct ProfileView: View {
         .sheet(isPresented: $showingAddressManager) {
             SavedAddressesView(savedAddressManager: savedAddressManager)
         }
-        
+        .sheet(isPresented: $showingFavoriteRoutes) {
+            FavoriteRoutesView(onRouteSelected: { routeData in
+                // Use RouteLoader to navigate to Search tab with this route
+                routeLoader.loadRoute(routeData)
+                
+                // Close the favorite routes sheet
+                showingFavoriteRoutes = false
+            })
+        }
         .sheet(isPresented: $showingAdminDashboard) {
             AdminDashboardView()
         }
@@ -248,6 +258,20 @@ struct ProfileView: View {
                 }
             )
             
+            Divider()
+                .padding(.leading, 50)
+            
+            // ADD THIS NEW MENU ITEM:
+            menuItem(
+                icon: "heart.fill",
+                title: "Favorite Routes",
+                subtitle: "Your saved favorite routes",
+                action: {
+                    hapticManager.menuNavigation()
+                    showingFavoriteRoutes = true
+                }
+            )
+
             Divider()
                 .padding(.leading, 50)
             

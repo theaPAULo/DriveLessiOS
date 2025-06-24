@@ -19,6 +19,8 @@ struct RouteResultsView: View {
 
     @State private var isFavorite: Bool = false  // ADD THIS LINE
     @State private var showingSaveConfirmation: Bool = false  // ADD THIS LINE
+    @State private var showingNameRouteAlert: Bool = false  // ADD THIS LINE
+    @State private var routeName: String = ""              // ADD THIS LINE
 
     
     // Add these new state variables for real route data
@@ -367,6 +369,15 @@ struct RouteResultsView: View {
                 .cornerRadius(12)
             }
         }
+        .alert("Name Your Route", isPresented: $showingNameRouteAlert) {
+            TextField("Route name", text: $routeName)
+            Button("Save") {
+                saveRouteWithName()
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("Give this route a custom name to make it easy to find later")
+        }
         .alert("Route Saved", isPresented: $showingSaveConfirmation) {
             Button("OK") { }
         } message: {
@@ -590,6 +601,10 @@ struct RouteResultsView: View {
     
     // MARK: - Favorite Functionality
 
+    // MARK: - Favorite Functionality
+
+    // MARK: - Favorite Functionality
+
     /// Toggle favorite status and save/remove from favorites
     private func toggleFavorite() {
         let routeHistoryManager = RouteHistoryManager()
@@ -601,12 +616,37 @@ struct RouteResultsView: View {
             hapticManager.impact(.light)
             print("💔 Route removed from favorites")
         } else {
-            // Add to favorites (this will also save to history if auto-save is off)
-            routeHistoryManager.saveFavoriteRoute(optimizedRoute)
-            isFavorite = true
-            hapticManager.success()
-            showingSaveConfirmation = true
-            print("❤️ Route saved to favorites")
+            // Show naming dialog before saving
+            routeName = generateSuggestedName()
+            showingNameRouteAlert = true
+        }
+    }
+
+    /// Actually save the route with the chosen name
+    private func saveRouteWithName() {
+        let routeHistoryManager = RouteHistoryManager()
+        
+        // Use the custom name if provided, otherwise use suggested name
+        let finalName = routeName.isEmpty ? generateSuggestedName() : routeName
+        
+        // Save as favorite with custom name
+        routeHistoryManager.saveFavoriteRoute(optimizedRoute, customName: finalName)
+        isFavorite = true
+        hapticManager.success()
+        showingSaveConfirmation = true
+        print("❤️ Route saved to favorites with name: '\(finalName)'")
+    }
+
+    /// Generate a suggested route name
+    private func generateSuggestedName() -> String {
+        let startName = optimizedRoute.optimizedStops.first?.name ?? "Start"
+        let endName = optimizedRoute.optimizedStops.last?.name ?? "End"
+        let stopCount = optimizedRoute.optimizedStops.count - 2 // Exclude start and end
+        
+        if stopCount > 0 {
+            return "\(startName) → \(endName) (+\(stopCount) stops)"
+        } else {
+            return "\(startName) → \(endName)"
         }
     }
     

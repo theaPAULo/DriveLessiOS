@@ -139,9 +139,11 @@ class RouteHistoryManager: ObservableObject {
     
     // MARK: - Favorite Routes Management
 
-    /// Saves a route as a favorite (also saves to history if not already saved)
-    /// - Parameter routeData: The route data to save as favorite
-    func saveFavoriteRoute(_ routeData: RouteData) {
+    /// Saves a route as a favorite with a custom name
+    /// - Parameters:
+    ///   - routeData: The route data to save as favorite
+    ///   - customName: User-defined name for the route
+    func saveFavoriteRoute(_ routeData: RouteData, customName: String) {
         let context = coreDataManager.viewContext
         
         // Check if this route already exists in history
@@ -155,14 +157,15 @@ class RouteHistoryManager: ObservableObject {
             let existingRoutes = try context.fetch(request)
             
             if let existingRoute = existingRoutes.first {
-                // Route exists, just mark as favorite
+                // Route exists, just mark as favorite and update custom name
                 existingRoute.isFavorite = true
-                print("⭐ Marked existing route as favorite")
+                existingRoute.customName = customName.isEmpty ? nil : customName
+                print("⭐ Marked existing route as favorite with name: '\(customName)'")
             } else {
                 // Route doesn't exist, create new one and mark as favorite
                 let savedRoute = SavedRoute(context: context)
                 
-                // Set all the standard properties (same as saveRoute method)
+                // Set all the standard properties
                 savedRoute.id = UUID()
                 savedRoute.startLocation = routeData.startLocation
                 savedRoute.endLocation = routeData.endLocation
@@ -170,7 +173,9 @@ class RouteHistoryManager: ObservableObject {
                 savedRoute.estimatedTime = routeData.estimatedTime
                 savedRoute.createdDate = Date()
                 savedRoute.considerTraffic = routeData.considerTraffic
-                savedRoute.isFavorite = true  // Mark as favorite
+                savedRoute.isFavorite = true
+                savedRoute.customName = customName.isEmpty ? nil : customName
+                savedRoute.routeName = customName.isEmpty ? generateRouteName(for: routeData) : customName
                 
                 // Store display names
                 if !routeData.optimizedStops.isEmpty {
@@ -210,10 +215,7 @@ class RouteHistoryManager: ObservableObject {
                     }
                 }
                 
-                // Generate route name
-                savedRoute.routeName = generateRouteName(for: routeData)
-                
-                print("⭐ Created new favorite route")
+                print("⭐ Created new favorite route with custom name: '\(customName)'")
             }
             
             coreDataManager.save()
@@ -222,7 +224,6 @@ class RouteHistoryManager: ObservableObject {
             print("❌ Failed to save favorite route: \(error)")
         }
     }
-
     /// Removes favorite status from a route
     /// - Parameter routeData: The route data to unfavorite
     func removeFavorite(_ routeData: RouteData) {

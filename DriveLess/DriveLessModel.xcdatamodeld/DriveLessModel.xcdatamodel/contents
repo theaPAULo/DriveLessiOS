@@ -12,6 +12,7 @@
     <entity name="SavedRoute" representedClassName="SavedRoute" syncable="YES">
         <attribute name="considerTraffic" attributeType="Boolean" usesScalarValueType="YES"/>
         <attribute name="createdDate" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="customName" optional="YES" attributeType="String"/>
         <attribute name="endLocation" attributeType="String"/>
         <attribute name="endLocationDisplayName" optional="YES" attributeType="String"/>
         <attribute name="estimatedTime" attributeType="String"/>
