@@ -2,7 +2,7 @@
 //  ContentView.swift
 //  DriveLess
 //
-//  Clean home screen with Google authentication
+//  Clean home screen with Google AND Apple authentication
 //
 
 import SwiftUI
@@ -12,11 +12,9 @@ struct ContentView: View {
     // Create instances of our managers
     @StateObject private var locationManager = LocationManager()
     @StateObject private var authManager = AuthenticationManager()
-    @EnvironmentObject var themeManager: ThemeManager  // ADD THIS LINE
-    @EnvironmentObject var hapticManager: HapticManager  // ADD THIS LINE
-    @EnvironmentObject var settingsManager: SettingsManager  // ADD THIS LINE
-
-
+    @EnvironmentObject var themeManager: ThemeManager
+    @EnvironmentObject var hapticManager: HapticManager
+    @EnvironmentObject var settingsManager: SettingsManager
     
     // MARK: - Color Theme (Earthy)
     private let primaryGreen = Color(red: 0.2, green: 0.4, blue: 0.2) // Dark forest green
@@ -102,7 +100,7 @@ struct ContentView: View {
                 Spacer()
             }
             
-            // MARK: - Authentication Section (Google Only)
+            // MARK: - Authentication Section (UPDATED with both Google and Apple)
             VStack(spacing: 20) {
                 
                 // Show error message if there is one
@@ -121,11 +119,58 @@ struct ContentView: View {
                     .multilineTextAlignment(.center)
                 
                 VStack(spacing: 16) {
-                    // Google Sign-In Button (Working!)
+                    // Apple Sign-In Button (NEW - Primary option)
                     Button(action: {
                         // Add haptic feedback
-                        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-                        impactFeedback.impactOccurred()
+                        hapticManager.buttonTap()
+                        
+                        // Trigger Apple Sign-In
+                        authManager.signInWithApple()
+                    }) {
+                        HStack(spacing: 12) {
+                            if authManager.isLoading {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                    .scaleEffect(0.8)
+                            } else {
+                                Image(systemName: "applelogo")
+                                    .font(.system(size: 18, weight: .medium))
+                            }
+                            
+                            Text(authManager.isLoading ? "Signing in..." : "Continue with Apple")
+                                .font(.system(size: 18, weight: .semibold))
+                        }
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 56)
+                        .background(Color.black) // Apple's standard black background
+                        .cornerRadius(16)
+                        .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+                    }
+                    .disabled(authManager.isLoading)
+                    .opacity(authManager.isLoading ? 0.7 : 1.0)
+                    
+                    // Divider with "OR"
+                    HStack {
+                        Rectangle()
+                            .frame(height: 1)
+                            .foregroundColor(.secondary.opacity(0.3))
+                        
+                        Text("OR")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 16)
+                        
+                        Rectangle()
+                            .frame(height: 1)
+                            .foregroundColor(.secondary.opacity(0.3))
+                    }
+                    .padding(.vertical, 8)
+                    
+                    // Google Sign-In Button (UPDATED - Secondary option)
+                    Button(action: {
+                        // Add haptic feedback
+                        hapticManager.buttonTap()
                         
                         // Trigger Google Sign-In
                         authManager.signInWithGoogle()
@@ -133,7 +178,7 @@ struct ContentView: View {
                         HStack(spacing: 12) {
                             if authManager.isLoading {
                                 ProgressView()
-                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                    .progressViewStyle(CircularProgressViewStyle(tint: primaryGreen))
                                     .scaleEffect(0.8)
                             } else {
                                 Image(systemName: "globe")
@@ -143,31 +188,39 @@ struct ContentView: View {
                             Text(authManager.isLoading ? "Signing in..." : "Continue with Google")
                                 .font(.system(size: 18, weight: .semibold))
                         }
-                        .foregroundColor(.white)
+                        .foregroundColor(primaryGreen)
                         .frame(maxWidth: .infinity)
                         .frame(height: 56)
                         .background(
-                            LinearGradient(
-                                gradient: Gradient(colors: [primaryGreen, accentBrown]),
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
+                            RoundedRectangle(cornerRadius: 16)
+                                .stroke(primaryGreen, lineWidth: 2)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 16)
+                                        .fill(Color(.systemBackground))
+                                )
                         )
-                        .cornerRadius(16)
-                        .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+                        .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
                     }
                     .disabled(authManager.isLoading)
                     .opacity(authManager.isLoading ? 0.7 : 1.0)
                     
-                    // Coming Soon Message
-                    HStack(spacing: 8) {
-                        Image(systemName: "applelogo")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.secondary)
+                    // Privacy Notice (NEW - Required for Apple Sign-In)
+                    VStack(spacing: 8) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "lock.shield.fill")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.secondary)
+                            
+                            Text("Your data is secure and private")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(.secondary)
+                        }
                         
-                        Text("Apple Sign-In coming soon!")
-                            .font(.system(size: 14, weight: .medium))
+                        Text("Sign in to sync your routes across devices and access advanced features")
+                            .font(.system(size: 12))
                             .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .lineLimit(2)
                     }
                     .padding(.top, 8)
                 }
