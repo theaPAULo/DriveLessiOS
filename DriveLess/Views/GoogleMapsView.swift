@@ -25,9 +25,10 @@ struct GoogleMapsView: UIViewRepresentable {
     func makeUIView(context: Context) -> GMSMapView {
         print("🗺️ Creating Google Maps view...")
         
-        // Create the map view with proper initializer
+        // FIXED: Create the map view with modern initializer (no deprecated frame:camera:)
         let camera = GMSCameraPosition.camera(withLatitude: 29.7604, longitude: -95.3698, zoom: 10.0)
-        let mapView = GMSMapView(frame: .zero, camera: camera)
+        let mapView = GMSMapView()
+        mapView.camera = camera
         
         // Force the map type to be normal
         mapView.mapType = GMSMapViewType.normal
@@ -64,14 +65,6 @@ struct GoogleMapsView: UIViewRepresentable {
     
     // MARK: - Polyline Decoding
     
-    /**
-     * Decode Google's encoded polyline into CLLocationCoordinate2D points
-     * This follows the actual roads instead of straight lines
-     */
-    /**
-     * Decode Google's encoded polyline into CLLocationCoordinate2D points
-     * This follows the actual roads instead of straight lines
-     */
     /**
      * Decode Google's encoded polyline into CLLocationCoordinate2D points
      * This follows the actual roads instead of straight lines
@@ -234,7 +227,6 @@ struct GoogleMapsView: UIViewRepresentable {
             polyline.map = mapView
         }
         
-        // Fit camera to show all markers
         // Fit camera to show all markers with proper bounds validation
         if coordinates.count > 1 {
             print("📍 Fitting camera to \(coordinates.count) coordinates")
@@ -514,6 +506,7 @@ struct GoogleMapsView: UIViewRepresentable {
         mapView.addSubview(button)
     }
 }
+
 // MARK: - Map Delegate (Force Info Windows)
 extension GoogleMapsView {
     class Coordinator: NSObject, GMSMapViewDelegate {
@@ -608,7 +601,8 @@ extension MapRouteData {
                 originalInput: stop,
                 type: .stop,
                 distance: "\(Int.random(in: 5...15)) min",
-                duration: "\(Float.random(in: 2...8).rounded(1)) mi"
+                // FIXED: Use proper rounding method instead of rounded(_:) with Int parameter
+                duration: String(format: "%.1f mi", Float.random(in: 2...8))
             ))
         }
 
@@ -619,7 +613,8 @@ extension MapRouteData {
             originalInput: routeData.endLocation,
             type: .end,
             distance: "\(Int.random(in: 8...20)) min",
-            duration: "\(Float.random(in: 3...10).rounded(1)) mi"
+            // FIXED: Use proper rounding method instead of rounded(_:) with Int parameter
+            duration: String(format: "%.1f mi", Float.random(in: 3...10))
         ))
         
         // Create route coordinates (simple path between points)
@@ -650,82 +645,4 @@ extension MapRouteData {
             CLLocationCoordinate2D(latitude: 29.8174, longitude: -95.4018), // Woodlands
         ]
     }
-    
-    // MARK: - Polyline Decoding
-
-
-     /**
-      * Decode Google's encoded polyline into CLLocationCoordinate2D points
-      * This follows the actual roads instead of straight lines
-      */
-     private func decodePolyline(_ encodedPolyline: String) -> [CLLocationCoordinate2D] {
-         guard !encodedPolyline.isEmpty else {
-             print("❌ Empty polyline string")
-             return []
-         }
-         
-         var coordinates: [CLLocationCoordinate2D] = []
-         var lat = 0.0
-         var lng = 0.0
-         var index = 0
-         let chars = Array(encodedPolyline.utf8)
-         
-         print("📍 Decoding polyline with \(chars.count) characters")
-         
-         while index < chars.count {
-             // Decode latitude
-             var shift = 0
-             var result = 0
-             
-             while true {
-                 guard index < chars.count else {
-                     print("❌ Index out of bounds while decoding latitude")
-                     return coordinates
-                 }
-                 
-                 let currentByte = Int(chars[index]) - 63
-                 index += 1
-                 result |= (currentByte & 0x1F) << shift
-                 shift += 5
-                 
-                 if (currentByte & 0x20) == 0 {
-                     break
-                 }
-             }
-             
-             let deltaLat = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1))
-             lat += Double(deltaLat)
-             
-             // Decode longitude
-             shift = 0
-             result = 0
-             
-             while true {
-                 guard index < chars.count else {
-                     print("❌ Index out of bounds while decoding longitude")
-                     return coordinates
-                 }
-                 
-                 let currentByte = Int(chars[index]) - 63
-                 index += 1
-                 result |= (currentByte & 0x1F) << shift
-                 shift += 5
-                 
-                 if (currentByte & 0x20) == 0 {
-                     break
-                 }
-             }
-             
-             let deltaLng = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1))
-             lng += Double(deltaLng)
-             
-             coordinates.append(CLLocationCoordinate2D(
-                 latitude: lat / 1e5,
-                 longitude: lng / 1e5
-             ))
-         }
-         
-         print("📍 Successfully decoded \(coordinates.count) polyline points")
-         return coordinates
-     }
 }

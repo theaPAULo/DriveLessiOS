@@ -1,13 +1,14 @@
+//
 //  RouteResultsView.swift
 //  DriveLess
 //
-//  Display optimized route results with map and directions
+//  Display optimized route results with unified earthy theme
 //
 
 import SwiftUI
 import GoogleMaps
-import GooglePlaces  // <-- ADD THIS LINE
-import CoreData  // <-- ADD THIS LINE
+import GooglePlaces
+import CoreData
 
 struct RouteResultsView: View {
     let routeData: RouteData
@@ -15,25 +16,22 @@ struct RouteResultsView: View {
     @State private var optimizedRoute: RouteData
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var settingsManager: SettingsManager
-    @EnvironmentObject var hapticManager: HapticManager  // ADD THIS LINE
-
-    @State private var isFavorite: Bool = false  // ADD THIS LINE
-    @State private var showingSaveConfirmation: Bool = false  // ADD THIS LINE
-    @State private var showingNameRouteAlert: Bool = false  // ADD THIS LINE
-    @State private var routeName: String = ""              // ADD THIS LINE
+    @EnvironmentObject var hapticManager: HapticManager
+    @EnvironmentObject var themeManager: ThemeManager
     
-    // ADD THIS NEW STATE VARIABLE TO CACHE MAP DATA
+    @State private var isFavorite: Bool = false
+    @State private var showingSaveConfirmation: Bool = false
+    @State private var showingNameRouteAlert: Bool = false
+    @State private var routeName: String = ""
+    @State private var showingUsageLimitAlert: Bool = false
+    
+    // Map and route data
     @State private var cachedMapRouteData: MapRouteData?
-
-    
-    // Add these new state variables for real route data
     @State private var routeLegs: [RouteLeg] = []
     @State private var routePolyline: String?
-    @State private var waypointOrder: [Int] = []
     
-    // MARK: - Usage Tracking
+    // Usage tracking
     @StateObject private var usageTracker = UsageTrackingManager()
-    @State private var showingUsageLimitAlert = false
     
     init(routeData: RouteData) {
         self.routeData = routeData
@@ -41,327 +39,373 @@ struct RouteResultsView: View {
     }
     
     var body: some View {
-        VStack(spacing: 0) {
-            if isLoading {
-                // Loading State
-                VStack(spacing: 20) {
-                    ProgressView()
-                        .scaleEffect(1.5)
-                    
-                    Text("Optimizing your route...")
-                        .font(.headline)
-                    
-                    Text("Finding the best order for your stops")
-                        .font(.subheadline)
-                        .foregroundColor(.gray)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(.systemBackground))
-            } else {
-                // Results Content
-                ScrollView {
-                    VStack(spacing: 20) {
-                        // Header Stats
-                        routeStatsView
-                        
-                        // Google Maps View
-                        interactiveMapView
-                        
-                        // Route Order List
-                        routeOrderView
-                        
-                        // Action Buttons
-                        actionButtonsView
+        ZStack {
+                // Background
+                themeManager.background
+                    .ignoresSafeArea()
+                
+                if isLoading {
+                    loadingView
+                } else {
+                    ScrollView {
+                        VStack(spacing: 20) {
+                            
+                            // MARK: - Route Summary Card
+                            routeSummaryCard
+                            
+                            // MARK: - Interactive Map
+                            mapSection
+                            
+                            // MARK: - Route Order
+                            routeOrderSection
+                            
+                            // MARK: - Action Buttons
+                            actionButtonsSection
+                            
+                            Spacer(minLength: 20)
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.top, 10)
                     }
-                    .padding()
                 }
             }
-        }
-        .navigationBarBackButtonHidden(true)
+            .navigationTitle("Route Results")
+            .navigationBarTitleDisplayMode(.large)
+            .navigationBarBackButtonHidden(true)
+            // REMOVED: Back button from toolbar
+            .onAppear {
+                calculateRealRoute()
+                checkIfFavorite()
+            }
+            .alert("Daily Limit Reached", isPresented: $showingUsageLimitAlert) {
+                Button("OK") {
+                    dismiss()
+                }
+            } message: {
+                Text("You've used all \(UsageTrackingManager.DAILY_LIMIT) route calculations for today. Your limit will reset at midnight.")
+            }
         .gesture(
             DragGesture()
                 .onEnded { gesture in
                     // Check if this is a right swipe (going back)
-                    // Note: Using .width and .height instead of .x and .y
                     if gesture.translation.width > 100 && abs(gesture.translation.height) < 50 {
                         // Add haptic feedback
-                        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-                        impactFeedback.impactOccurred()
+                        hapticManager.impact(.medium)
                         
                         // Navigate back to RouteInputView
                         dismiss()
                     }
                 }
         )
-        .onAppear {
-        // Check if this route is already favorited
-            let routeHistoryManager = RouteHistoryManager()
-            isFavorite = routeHistoryManager.isRouteFavorited(optimizedRoute)
-            calculateRealRoute()
-        }
-        .alert("Daily Limit Reached", isPresented: $showingUsageLimitAlert) {
-            Button("OK") {
-                dismiss() // Go back to route input
-            }
-        } message: {
-            Text("You've used \(usageTracker.todayUsage) out of \(UsageTrackingManager.DAILY_LIMIT) route calculations today. Your limit will reset at midnight.")
-        }
+        .navigationBarBackButtonHidden(true)
     }
     
-    // MARK: - View Components
-    
-    private var routeStatsView: some View {
-        HStack(spacing: 20) {
-            VStack {
-                HStack {
-                    Image(systemName: "map")
-                        .foregroundColor(.green)
-                    VStack(alignment: .leading) {
-                        Text("Total Distance")
-                            .font(.caption)
-                            .foregroundColor(.gray)
-                        Text(formatDistanceForDisplay(optimizedRoute.totalDistance))
-                            .font(.title2)
-                            .fontWeight(.semibold)
-                    }
-                }
-            }
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background(Color.green.opacity(0.1))
-            .cornerRadius(10)
+    // MARK: - Loading View (Themed)
+    private var loadingView: some View {
+        VStack(spacing: 20) {
+            // Animated route icon
+            Image(systemName: "map.fill")
+                .font(.system(size: 60))
+                .foregroundColor(themeManager.primary)
+                .scaleEffect(1.2)
+                .animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true), value: isLoading)
             
-            VStack {
-                HStack {
-                    Image(systemName: "clock")
-                        .foregroundColor(.blue)
-                    VStack(alignment: .leading) {
-                        Text("Estimated Time")
-                            .font(.caption)
-                            .foregroundColor(.gray)
-                        Text(optimizedRoute.estimatedTime)
-                            .font(.title2)
-                            .fontWeight(.semibold)
-                    }
-                }
-            }
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background(Color.blue.opacity(0.1))
-            .cornerRadius(10)
+            Text("Optimizing Your Route")
+                .font(.title2)
+                .fontWeight(.semibold)
+                .foregroundColor(themeManager.textPrimary)
+            
+            Text("Finding the most efficient path...")
+                .font(.body)
+                .foregroundColor(themeManager.textSecondary)
+                .multilineTextAlignment(.center)
+            
+            ProgressView()
+                .progressViewStyle(CircularProgressViewStyle(tint: themeManager.primary))
+                .scaleEffect(1.2)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(themeManager.background)
     }
     
-
-    private var interactiveMapView: some View {
-        Group {
+    // MARK: - Route Summary Card (Themed)
+    private var routeSummaryCard: some View {
+        VStack(spacing: 16) {
+            // Header with route info (REMOVED: Optimized badge)
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Route Summary")
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(themeManager.textPrimary)
+                    
+                    Text("Optimized for efficiency")
+                        .font(.subheadline)
+                        .foregroundColor(themeManager.textSecondary)
+                }
+                
+                Spacer()
+                
+                // REMOVED: Optimized badge
+            }
+            
+            // Route metrics
+            HStack(spacing: 20) {
+                metricItem(
+                    icon: "road.lanes",
+                    title: "Distance",
+                    value: optimizedRoute.totalDistance,
+                    color: themeManager.primary
+                )
+                
+                Divider()
+                    .frame(height: 40)
+                
+                metricItem(
+                    icon: "clock.fill",
+                    title: "Time",
+                    value: optimizedRoute.estimatedTime,
+                    color: themeManager.secondary
+                )
+                
+                Divider()
+                    .frame(height: 40)
+                
+                metricItem(
+                    icon: "mappin.circle.fill",
+                    title: "Stops",
+                    value: "\(optimizedRoute.optimizedStops.count)",
+                    color: themeManager.accent
+                )
+            }
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(themeManager.cardBackground)
+                .shadow(color: themeManager.cardShadow(), radius: 8, x: 0, y: 4)
+        )
+    }
+    
+    // MARK: - Metric Item Helper (Themed)
+    private func metricItem(icon: String, title: String, value: String, color: Color) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 20, weight: .medium))
+                .foregroundColor(color)
+            
+            Text(value)
+                .font(.title3)
+                .fontWeight(.bold)
+                .foregroundColor(themeManager.textPrimary)
+            
+            Text(title)
+                .font(.caption)
+                .foregroundColor(themeManager.textSecondary)
+        }
+        .frame(maxWidth: .infinity)
+    }
+    
+    // MARK: - Map Section (Themed)
+    private var mapSection: some View {
+        VStack(spacing: 12) {
+            HStack {
+                Text("Route Map")
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(themeManager.textPrimary)
+                
+                Spacer()
+                
+                // REMOVED: Car and location buttons
+            }
+            
+            // Google Maps container
             if let mapData = cachedMapRouteData {
                 GoogleMapsView(routeData: mapData)
-                    .frame(height: 350)
+                    .frame(height: 300)
                     .cornerRadius(12)
-                    .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+                    .shadow(color: themeManager.cardShadow(), radius: 6, x: 0, y: 3)
             } else {
-                // Fallback while loading
-                Rectangle()
-                    .fill(Color(.systemGray6))
-                    .frame(height: 350)
-                    .cornerRadius(12)
+                // Map placeholder
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(themeManager.secondaryBackground)
+                    .frame(height: 300)
                     .overlay(
-                        ProgressView()
-                            .scaleEffect(1.2)
+                        VStack(spacing: 12) {
+                            Image(systemName: "map")
+                                .font(.system(size: 40))
+                                .foregroundColor(themeManager.textTertiary)
+                            
+                            Text("Loading map...")
+                                .font(.subheadline)
+                                .foregroundColor(themeManager.textSecondary)
+                        }
                     )
             }
         }
     }
-        
-    // Helper function to create map data from current route with real coordinates
-    private func createMapRouteData() -> MapRouteData {
-        var waypoints: [RouteStop] = []
-        var coordinates: [CLLocationCoordinate2D] = []
-        
-        // If we have real route legs, use those coordinates
-        if !routeLegs.isEmpty {
-            print("📍 Using real coordinates from API response")
-            
-            // FIXED: Use the optimized route data (which has preserved business names)
-            // instead of recreating from API legs
-            
-            for (index, optimizedStop) in optimizedRoute.optimizedStops.enumerated() {
-                // Get coordinates from the corresponding leg
-                let coordinate: CLLocationCoordinate2D
-                if index == 0 {
-                    // Start location - use start of first leg
-                    coordinate = CLLocationCoordinate2D(
-                        latitude: routeLegs.first?.start_location.lat ?? 0,
-                        longitude: routeLegs.first?.start_location.lng ?? 0
-                    )
-                } else if index == optimizedRoute.optimizedStops.count - 1 {
-                    // End location - use end of last leg
-                    coordinate = CLLocationCoordinate2D(
-                        latitude: routeLegs.last?.end_location.lat ?? 0,
-                        longitude: routeLegs.last?.end_location.lng ?? 0
-                    )
-                } else {
-                    // Middle stops - use end of corresponding leg
-                    let legIndex = index - 1
-                    if legIndex < routeLegs.count {
-                        coordinate = CLLocationCoordinate2D(
-                            latitude: routeLegs[legIndex].end_location.lat,
-                            longitude: routeLegs[legIndex].end_location.lng
-                        )
-                    } else {
-                        coordinate = CLLocationCoordinate2D(latitude: 0, longitude: 0)
-                    }
-                }
-                
-                // Use the optimized stop data (which preserves business names)
-                waypoints.append(optimizedStop)
-                coordinates.append(coordinate)
-                
-                print("📍 MAP: Added waypoint \(index): '\(optimizedStop.name)' at \(coordinate.latitude), \(coordinate.longitude)")
-            }
-            
-            return MapRouteData(
-                waypoints: waypoints,
-                totalDistance: optimizedRoute.totalDistance,
-                estimatedTime: optimizedRoute.estimatedTime,
-                routeCoordinates: coordinates,
-                encodedPolyline: routePolyline // Pass the real polyline
-            )
-            
-        } else {
-            print("📍 No route legs available, using fallback")
-            // Fallback to mock data if no real route data
-            return MapRouteData.mockRouteData(from: optimizedRoute)
-        }
-    }
     
-        
-        // Helper function to convert optimized route back to RouteData format
-        private func createRouteDataFromOptimized() -> RouteData {
-            // Extract addresses from optimized route
-            let startLocation = optimizedRoute.optimizedStops.first?.address ?? ""
-            let endLocation = optimizedRoute.optimizedStops.last?.address ?? ""
-            let stops = Array(optimizedRoute.optimizedStops.dropFirst().dropLast()).map { $0.address }
-            
-            return RouteData(
-                startLocation: startLocation,
-                endLocation: endLocation,
-                stops: stops,
-                isRoundTrip: false, // We'll enhance this later
-                considerTraffic: true
-            )
-        }
-    
-    private var routeOrderView: some View {
-        VStack(alignment: .leading, spacing: 0) {
+    // MARK: - Route Order Section (Themed)
+    private var routeOrderSection: some View {
+        VStack(spacing: 16) {
             HStack {
                 Image(systemName: "list.number")
-                    .foregroundColor(.primary)
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundColor(themeManager.primary)
+                
                 Text("Route Order")
                     .font(.headline)
-            }
-            .padding(.bottom, 10)
-            
-            ForEach(Array(optimizedRoute.optimizedStops.enumerated()), id: \.offset) { index, stop in
-                HStack {
-                    // Stop Number
-                    Circle()
-                        .fill(stop.type.color)
-                        .frame(width: 30, height: 30)
-                        .overlay(
-                            Text("\(index + 1)")
-                                .font(.caption)
-                                .fontWeight(.bold)
-                                .foregroundColor(.white)
-                        )
-                    
-                    // Stop Details
-                    VStack(alignment: .leading, spacing: 2) {
-                        // Main text: Business name or best display name
-                        Text(stop.displayName)
-                            .font(.body)
-                            .fontWeight(.medium)
-                            .lineLimit(1)
-                        
-                        // Subtitle: Always show the full address
-                        Text(stop.displayAddress)
-                            .font(.caption)
-                            .foregroundColor(.gray)
-                            .lineLimit(2)
-                        
-                        // Distance and duration info
-                        if let distance = stop.distance, let duration = stop.duration {
-                            HStack {
-                                Text("📍 \(formatLegDistance(distance))")
-                                Text("⏱️ \(duration)")
-                            }
-                            .font(.caption2)
-                            .foregroundColor(.blue)
-                        }
-                    }
-                    
-                    Spacer()
-                    
-                    // Stop Type Badge
-                    Text(stop.type.label)
-                        .font(.caption2)
-                        .fontWeight(.bold)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(stop.type.color.opacity(0.2))
-                        .foregroundColor(stop.type.color)
-                        .cornerRadius(8)
-                }
-                .padding(.vertical, 8)
+                    .fontWeight(.semibold)
+                    .foregroundColor(themeManager.textPrimary)
                 
-                if index < optimizedRoute.optimizedStops.count - 1 {
-                    Divider()
+                Spacer()
+            }
+            
+            VStack(spacing: 0) {
+                ForEach(Array(optimizedRoute.optimizedStops.enumerated()), id: \.offset) { index, stop in
+                    routeStopRow(stop: stop, index: index + 1)
+                    
+                    if index < optimizedRoute.optimizedStops.count - 1 {
+                        Rectangle()
+                            .fill(themeManager.textTertiary.opacity(0.3))
+                            .frame(height: 1)
+                            .padding(.horizontal, 16)
+                    }
                 }
             }
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(themeManager.cardBackground)
+                    .shadow(color: themeManager.cardShadow(), radius: 6, x: 0, y: 3)
+            )
         }
-        .padding()
-        .background(Color(.systemGray6).opacity(0.5))
-        .cornerRadius(10)
     }
     
-    private var actionButtonsView: some View {
-        VStack(spacing: 12) {
-            // Top row: Star button and Google Maps button
-            HStack(spacing: 12) {
-                // Star/Heart button to save as favorite
-                Button(action: toggleFavorite) {
-                    HStack {
-                        Image(systemName: isFavorite ? "heart.fill" : "heart")
-                            .foregroundColor(isFavorite ? .red : .gray)
-                        Text(isFavorite ? "Saved" : "Save Route")
-                            .foregroundColor(isFavorite ? .red : .primary)
+    // MARK: - Route Stop Row (Themed)
+    private func routeStopRow(stop: RouteStop, index: Int) -> some View {
+        HStack(spacing: 16) {
+            // Stop number circle
+            Circle()
+                .fill(
+                    LinearGradient(
+                        gradient: Gradient(colors: [stop.type.color, stop.type.color.opacity(0.8)]),
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .frame(width: 32, height: 32)
+                .overlay(
+                    Text("\(index)")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(.white)
+                )
+            
+            // Stop details
+            VStack(alignment: .leading, spacing: 4) {
+                Text(stop.name.isEmpty ? extractBusinessName(stop.address) : stop.name)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(themeManager.textPrimary)
+                    .lineLimit(1)
+                
+                Text(stop.address)
+                    .font(.system(size: 14))
+                    .foregroundColor(themeManager.textSecondary)
+                    .lineLimit(2)
+                
+                if let distance = stop.distance, let duration = stop.duration {
+                    HStack(spacing: 12) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "road.lanes")
+                                .font(.system(size: 10))
+                                .foregroundColor(themeManager.accent)
+                            Text(distance)
+                                .font(.caption)
+                                .foregroundColor(themeManager.accent)
+                        }
+                        
+                        HStack(spacing: 4) {
+                            Image(systemName: "clock")
+                                .font(.system(size: 10))
+                                .foregroundColor(themeManager.secondary)
+                            Text(duration)
+                                .font(.caption)
+                                .foregroundColor(themeManager.secondary)
+                        }
                     }
+                }
+            }
+            
+            Spacer()
+            
+            // Stop type badge
+            Text(stop.type.label)
+                .font(.caption2)
+                .fontWeight(.bold)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(stop.type.color.opacity(0.2))
+                .foregroundColor(stop.type.color)
+                .cornerRadius(8)
+        }
+        .padding(16)
+    }
+    
+    // MARK: - Action Buttons Section (Themed) - REMOVED Apple Maps
+    private var actionButtonsSection: some View {
+        VStack(spacing: 12) {
+            // Single row: Favorite and Google Maps buttons only
+            HStack(spacing: 12) {
+                // Favorite button
+                Button(action: {
+                    hapticManager.buttonTap()
+                    toggleFavorite()
+                }) {
+                    HStack(spacing: 8) {
+                        Image(systemName: isFavorite ? "heart.fill" : "heart")
+                            .font(.system(size: 16, weight: .medium))
+                        
+                        Text(isFavorite ? "Saved" : "Save Route")
+                            .font(.system(size: 16, weight: .medium))
+                    }
+                    .foregroundColor(isFavorite ? .white : themeManager.primary)
                     .frame(maxWidth: .infinity)
-                    .padding()
+                    .frame(height: 50)
                     .background(
                         RoundedRectangle(cornerRadius: 12)
-                            .fill(isFavorite ? Color.red.opacity(0.1) : Color(.systemGray6))
+                            .fill(isFavorite ?
+                                LinearGradient(gradient: Gradient(colors: [.red, .red.opacity(0.8)]), startPoint: .leading, endPoint: .trailing) :
+                                LinearGradient(gradient: Gradient(colors: [themeManager.primary.opacity(0.1), themeManager.accent.opacity(0.1)]), startPoint: .leading, endPoint: .trailing)
+                            )
                             .overlay(
                                 RoundedRectangle(cornerRadius: 12)
-                                    .stroke(isFavorite ? Color.red : Color.clear, lineWidth: 1)
+                                    .stroke(isFavorite ? .red : themeManager.primary, lineWidth: 1)
                             )
                     )
                 }
                 
-                // Google Maps button (now takes full width alongside save button)
-                Button(action: openGoogleMaps) {
-                    HStack {
+                // Google Maps button (themed)
+                Button(action: {
+                    hapticManager.buttonTap()
+                    openGoogleMaps()
+                }) {
+                    HStack(spacing: 8) {
                         Image(systemName: "map")
-                        Text("Open in Google Maps")
+                            .font(.system(size: 16, weight: .medium))
+                        
+                        Text("Google Maps")
+                            .font(.system(size: 16, weight: .medium))
                     }
+                    .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.blue.opacity(0.1))
-                    .foregroundColor(.blue)
+                    .frame(height: 50)
+                    .background(themeManager.buttonGradient())
                     .cornerRadius(12)
+                    .shadow(color: themeManager.cardShadow(), radius: 6, x: 0, y: 3)
                 }
             }
+            
+            // REMOVED: Apple Maps button
         }
         .alert("Name Your Route", isPresented: $showingNameRouteAlert) {
             TextField("Route name", text: $routeName)
@@ -379,48 +423,48 @@ struct RouteResultsView: View {
         }
     }
     
-    // MARK: - Actions
+    // MARK: - Helper Methods
+    
+    private func extractBusinessName(_ address: String) -> String {
+        if address.contains(",") {
+            let firstPart = address.components(separatedBy: ",").first ?? ""
+            return firstPart.trimmingCharacters(in: .whitespaces)
+        }
+        return address
+    }
+    
     private func calculateRealRoute() {
         print("🚀 Starting real route calculation...")
         
-        // MARK: - Check Usage Limits First
-        if !usageTracker.canPerformRouteCalculation() {
-            print("❌ Usage limit exceeded: \(usageTracker.todayUsage)/\(UsageTrackingManager.DAILY_LIMIT)")
-            
-            // Show usage limit alert instead of calculating route
-            DispatchQueue.main.async {
-                self.showingUsageLimitAlert = true
-                self.isLoading = false
+        // Check usage limits first (unless admin)
+        if !UserDefaults.standard.bool(forKey: "driveless_admin_mode") {
+            if !usageTracker.canPerformRouteCalculation() {
+                print("❌ Usage limit exceeded: \(usageTracker.todayUsage)/\(UsageTrackingManager.DAILY_LIMIT)")
+                showingUsageLimitAlert = true
+                isLoading = false
+                return
             }
-            return
         }
         
-        print("✅ Usage check passed: \(usageTracker.todayUsage)/\(UsageTrackingManager.DAILY_LIMIT)")
+        print("🔐 Admin user - bypassing usage limits")
+        print("✅ Usage check passed: \(usageTracker.todayUsage)/25")
         
-        // Extract business names from the optimized stops (preserves user's original search terms)
+        // Extract business names from optimized stops
         let startDisplayName = routeData.optimizedStops.first?.name ?? ""
         let endDisplayName = routeData.optimizedStops.last?.name ?? ""
         let stopDisplayNames = Array(routeData.optimizedStops.dropFirst().dropLast()).map { $0.name }
-
-        // ADD THIS DEBUG LOGGING:
-        print("🔍 DEBUG: RouteData optimizedStops before API call:")
-        for (index, stop) in routeData.optimizedStops.enumerated() {
-            print("🔍   Stop \(index): name='\(stop.name)', address='\(stop.address)', originalInput='\(stop.originalInput)'")
-        }
-
+        
         print("🏪 Passing business names to API:")
         print("🏪 Start: '\(startDisplayName)'")
         print("🏪 End: '\(endDisplayName)'")
         print("🏪 Stops: \(stopDisplayNames)")
-            
-
-        // Use the real route calculator - NOW WITH BUSINESS NAMES
+        
+        // Use the real route calculator with business names
         RouteCalculator.calculateOptimizedRoute(
             startLocation: routeData.startLocation,
             endLocation: routeData.endLocation,
             stops: routeData.stops,
             considerTraffic: routeData.considerTraffic,
-            // NEW: Pass the original business names the user searched for
             startLocationDisplayName: startDisplayName,
             endLocationDisplayName: endDisplayName,
             stopDisplayNames: stopDisplayNames
@@ -430,160 +474,150 @@ struct RouteResultsView: View {
                 case .success(let optimizedResult):
                     print("✅ Route calculation successful!")
                     
-                    // MARK: - Increment Usage Counter (only on success)
-                    self.usageTracker.incrementUsage()
+                    // Increment usage counter (only on success)
+                    if !UserDefaults.standard.bool(forKey: "driveless_admin_mode") {
+                        self.usageTracker.incrementUsage()
+                    } else {
+                        print("🔐 Admin user - not incrementing usage")
+                    }
                     print("📈 Usage incremented to: \(self.usageTracker.todayUsage)/\(UsageTrackingManager.DAILY_LIMIT)")
                     
-                    // Update the UI with real data, preserving business names from input
+                    // Update the UI with real data
                     self.optimizedRoute.totalDistance = optimizedResult.totalDistance
                     self.optimizedRoute.estimatedTime = optimizedResult.estimatedTime
-
-                    // IMPORTANT: Merge API results with original business names
-                    // The API gives us accurate addresses and coordinates, but we want to keep
-                    // the business names that the user originally selected for better UX
-                    var mergedStops: [RouteStop] = []
-                    let originalStops = self.optimizedRoute.optimizedStops // These have the business names
-
-                    for (index, apiStop) in optimizedResult.optimizedStops.enumerated() {
-                        if index < originalStops.count {
-                            // Use business name from original input, but address from API
-                            mergedStops.append(RouteStop(
-                                address: apiStop.address,           // Accurate from API
-                                name: originalStops[index].name,    // Business name from user input
-                                originalInput: originalStops[index].originalInput, // Original user input
-                                type: apiStop.type,                 // Type from API
-                                distance: apiStop.distance,         // Distance from API
-                                duration: apiStop.duration          // Duration from API
-                            ))
-                        } else {
-                            // Fallback to API data if we don't have original data
-                            mergedStops.append(apiStop)
-                        }
-                    }
-
-                    self.optimizedRoute.optimizedStops = mergedStops
+                    self.optimizedRoute.optimizedStops = optimizedResult.optimizedStops
                     
-                    // Store additional route data for map display
+                    // Store route data for map
                     self.routeLegs = optimizedResult.legs
                     self.routePolyline = optimizedResult.routePolyline
-                    self.waypointOrder = optimizedResult.waypointOrder
                     
-                    // Extract real coordinates from the API response
-                    print("📍 Extracting real coordinates from API response...")
-                    for (index, leg) in optimizedResult.legs.enumerated() {
-                        print("📍 Leg \(index): Start(\(leg.start_location.lat), \(leg.start_location.lng)) -> End(\(leg.end_location.lat), \(leg.end_location.lng))")
-                    }
+                    // Create map data
+                    self.createMapData()
                     
-                    // CACHE THE MAP DATA HERE - ADD THIS NEW CODE
-                    self.cachedMapRouteData = self.createMapRouteData()
-                    print("📍 Cached map route data to prevent recreation")
+                    // Auto-save to history
+                    self.saveToHistory()
                     
-                    withAnimation {
-                        self.isLoading = false
-                    }
-                    
-                    // 📚 AUTO-SAVE ROUTE TO HISTORY (Only if setting is enabled)
-                    if settingsManager.autoSaveRoutes {
-                        let routeHistoryManager = RouteHistoryManager()
-                        routeHistoryManager.saveRoute(self.optimizedRoute)
-                        print("✅ Route auto-saved to history")
-                    } else {
-                        print("⏭️ Auto-save disabled - route not saved to history")
-                    }
+                    self.isLoading = false
                     
                 case .failure(let error):
-                    print("❌ Route calculation failed: \(error.localizedDescription)")
-                    
-                    // Show error to user and fall back to mock data
-                    self.showErrorAndFallbackToMock(error: error)
+                    print("❌ Route calculation failed: \(error)")
+                    self.isLoading = false
                 }
             }
         }
     }
-    private func showErrorAndFallbackToMock(error: Error) {
-        // For now, just log the error and show mock data
-        // In production, you'd want to show an error message to the user
-        print("⚠️ Falling back to mock data due to error: \(error.localizedDescription)")
+    
+    private func createMapData() {
+        print("📍 Extracting real coordinates from API response...")
         
-        // Create fallback mock data
-        var mockStops: [RouteStop] = []
+        var coordinates: [CLLocationCoordinate2D] = []
         
-        mockStops.append(RouteStop(
-            address: routeData.startLocation,
-            name: extractBusinessName(routeData.startLocation),
-            originalInput: routeData.startLocation,  // Added missing parameter
-            type: .start,
-            distance: nil,
-            duration: nil
-        ))
-        
-        for stop in routeData.stops {
-            if !stop.isEmpty {
-                mockStops.append(RouteStop(
-                    address: stop,
-                    name: extractBusinessName(stop),
-                    originalInput: stop,  // Added missing parameter
-                    type: .stop,
-                    distance: "10.5 mi",
-                    duration: "15 min"
+        // Extract coordinates from route legs
+        for (index, leg) in routeLegs.enumerated() {
+            coordinates.append(CLLocationCoordinate2D(
+                latitude: leg.start_location.lat,
+                longitude: leg.start_location.lng
+            ))
+            print("📍 Leg \(index): Start(\(leg.start_location.lat), \(leg.start_location.lng)) -> End(\(leg.end_location.lat), \(leg.end_location.lng))")
+            
+            // Add end coordinate for the last leg
+            if index == routeLegs.count - 1 {
+                coordinates.append(CLLocationCoordinate2D(
+                    latitude: leg.end_location.lat,
+                    longitude: leg.end_location.lng
                 ))
             }
         }
         
-        mockStops.append(RouteStop(
-            address: routeData.endLocation,
-            name: extractBusinessName(routeData.endLocation),
-            originalInput: routeData.endLocation,  // Added missing parameter
-            type: .end,
-            distance: nil,
-            duration: nil
-        ))
-        
-        optimizedRoute.optimizedStops = mockStops
-        optimizedRoute.totalDistance = "25.0 miles"
-        optimizedRoute.estimatedTime = "45 min"
-        
-        // CACHE THE MOCK DATA TOO - ADD THIS LINE
-        cachedMapRouteData = MapRouteData.mockRouteData(from: optimizedRoute)
-        
-        withAnimation {
-            isLoading = false
+        if coordinates.count == optimizedRoute.optimizedStops.count {
+            print("📍 Using real coordinates from API response")
+            
+            // Create map route data with real coordinates
+            cachedMapRouteData = MapRouteData(
+                waypoints: optimizedRoute.optimizedStops,
+                totalDistance: optimizedRoute.totalDistance,
+                estimatedTime: optimizedRoute.estimatedTime,
+                routeCoordinates: coordinates,
+                encodedPolyline: routePolyline
+            )
+            
+            // Log coordinates for debugging
+            for (index, coord) in coordinates.enumerated() {
+                print("📍 MAP: Added waypoint \(index): '\(optimizedRoute.optimizedStops[index].name)' at \(coord.latitude), \(coord.longitude)")
+            }
+            
+            print("📍 Cached map route data to prevent recreation")
+        } else {
+            print("⚠️ Coordinate count mismatch: \(coordinates.count) coords vs \(optimizedRoute.optimizedStops.count) stops")
         }
     }
     
-    private func extractBusinessName(_ address: String) -> String {
-        if address.contains(",") {
-            let name = address.components(separatedBy: ",").first ?? ""
-            return name.trimmingCharacters(in: .whitespaces)
+    private func saveToHistory() {
+        let routeHistoryManager = RouteHistoryManager()
+        routeHistoryManager.saveRoute(optimizedRoute)
+        print("✅ Route auto-saved to history")
+    }
+    
+    private func checkIfFavorite() {
+        let routeHistoryManager = RouteHistoryManager()
+        isFavorite = routeHistoryManager.isRouteFavorited(optimizedRoute)
+    }
+    
+    private func toggleFavorite() {
+        let routeHistoryManager = RouteHistoryManager()
+        
+        if isFavorite {
+            // Remove from favorites
+            routeHistoryManager.removeFavorite(optimizedRoute)
+            isFavorite = false
+            hapticManager.impact(.light)
+            print("💔 Route removed from favorites")
+        } else {
+            // Show naming dialog before saving
+            routeName = generateSuggestedName()
+            showingNameRouteAlert = true
         }
-        return ""
+    }
+    
+    private func saveRouteWithName() {
+        let routeHistoryManager = RouteHistoryManager()
+        
+        // Use the custom name if provided, otherwise use suggested name
+        let finalName = routeName.isEmpty ? generateSuggestedName() : routeName
+        
+        // Save as favorite with custom name
+        routeHistoryManager.saveFavoriteRoute(optimizedRoute, customName: finalName)
+        isFavorite = true
+        hapticManager.success()
+        showingSaveConfirmation = true
+        print("❤️ Route saved to favorites with name: '\(finalName)'")
+    }
+    
+    private func generateSuggestedName() -> String {
+        let startName = optimizedRoute.optimizedStops.first?.name ?? "Start"
+        let endName = optimizedRoute.optimizedStops.last?.name ?? "End"
+        return "\(startName) → \(endName)"
     }
     
     private func openGoogleMaps() {
         guard let url = generateGoogleMapsUrl() else {
-            print("❌ Could not generate Google Maps URL")
+            print("❌ Failed to generate Google Maps URL")
             return
         }
         
-        print("🗺️ Opening Google Maps with URL: \(url)")
+        print("🗺️ Opening Google Maps: \(url)")
         UIApplication.shared.open(url)
     }
-
-    private func openAppleMaps() {
-        guard let url = generateAppleMapsUrl() else {
-            print("❌ Could not generate Apple Maps URL")
-            return
-        }
-        
-        print("🍎 Opening Apple Maps with URL: \(url)")
-        UIApplication.shared.open(url)
-    }
-
+    
+    // REMOVED: openAppleMaps() function since Apple Maps button was removed
+    
     private func generateGoogleMapsUrl() -> URL? {
         guard !optimizedRoute.optimizedStops.isEmpty else { return nil }
         
         let origin = optimizedRoute.optimizedStops.first!.address
         let destination = optimizedRoute.optimizedStops.last!.address
+        
+        // Build waypoints string
         let waypoints = Array(optimizedRoute.optimizedStops.dropFirst().dropLast())
             .map { $0.address }
             .joined(separator: "|")
@@ -600,140 +634,19 @@ struct RouteResultsView: View {
         
         return URL(string: urlString)
     }
-
-    private func generateAppleMapsUrl() -> URL? {
-        guard !optimizedRoute.optimizedStops.isEmpty else { return nil }
-        
-        let origin = optimizedRoute.optimizedStops.first!.address
-        let destination = optimizedRoute.optimizedStops.last!.address
-        
-        var urlString = "http://maps.apple.com/?daddr=\(destination.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")"
-        urlString += "&saddr=\(origin.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")"
-        urlString += "&dirflg=d"
-        
-        return URL(string: urlString)
-    }
     
-    private func goBack() {
-        print("⬅️ Going back to route input...")
-    }
-    
-    // MARK: - Distance Formatting
-
-    
-    // MARK: - Favorite Functionality
-
-    // MARK: - Favorite Functionality
-
-    // MARK: - Favorite Functionality
-
-    /// Toggle favorite status and save/remove from favorites
-    private func toggleFavorite() {
-        let routeHistoryManager = RouteHistoryManager()
-        
-        if isFavorite {
-            // Remove from favorites
-            routeHistoryManager.removeFavorite(optimizedRoute)
-            isFavorite = false
-            hapticManager.impact(.light)
-            print("💔 Route removed from favorites")
-        } else {
-            // Show naming dialog before saving
-            routeName = generateSuggestedName()
-            showingNameRouteAlert = true
-        }
-    }
-
-    /// Actually save the route with the chosen name
-    private func saveRouteWithName() {
-        let routeHistoryManager = RouteHistoryManager()
-        
-        // Use the custom name if provided, otherwise use suggested name
-        let finalName = routeName.isEmpty ? generateSuggestedName() : routeName
-        
-        // Save as favorite with custom name
-        routeHistoryManager.saveFavoriteRoute(optimizedRoute, customName: finalName)
-        isFavorite = true
-        hapticManager.success()
-        showingSaveConfirmation = true
-        print("❤️ Route saved to favorites with name: '\(finalName)'")
-    }
-
-    /// Generate a suggested route name
-    private func generateSuggestedName() -> String {
-        let startName = optimizedRoute.optimizedStops.first?.name ?? "Start"
-        let endName = optimizedRoute.optimizedStops.last?.name ?? "End"
-        let stopCount = optimizedRoute.optimizedStops.count - 2 // Exclude start and end
-        
-        if stopCount > 0 {
-            return "\(startName) → \(endName) (+\(stopCount) stops)"
-        } else {
-            return "\(startName) → \(endName)"
-        }
-    }
-    
-    /// Converts distance string from miles to user's preferred unit
-    private func formatDistanceForDisplay(_ distanceString: String) -> String {
-        // Extract the numeric value from strings like "25.0 miles" or "10.5 mi"
-        let cleanString = distanceString.replacingOccurrences(of: " miles", with: "")
-                                       .replacingOccurrences(of: " mi", with: "")
-                                       .trimmingCharacters(in: .whitespaces)
-        
-        guard let milesValue = Double(cleanString) else {
-            // If we can't parse it, return as-is
-            return distanceString
-        }
-        
-        // Convert to user's preferred unit
-        switch settingsManager.distanceUnit {
-        case .miles:
-            return String(format: "%.1f mi", milesValue)
-        case .kilometers:
-            let kilometers = milesValue * 1.60934
-            return String(format: "%.1f km", kilometers)
-        }
-    }
-
-    /// Formats individual leg distances (like "10.5 mi" from route legs)
-    private func formatLegDistance(_ legDistanceText: String) -> String {
-        // Handle Google API distance format (e.g., "10.5 mi", "5.2 km")
-        if legDistanceText.contains("mi") {
-            let cleanValue = legDistanceText.replacingOccurrences(of: " mi", with: "")
-                                           .trimmingCharacters(in: .whitespaces)
-            if let miles = Double(cleanValue) {
-                switch settingsManager.distanceUnit {
-                case .miles:
-                    return String(format: "%.1f mi", miles)
-                case .kilometers:
-                    let kilometers = miles * 1.60934
-                    return String(format: "%.1f km", kilometers)
-                }
-            }
-        }
-        
-        // If already in km or unrecognized format, return as-is for now
-        return legDistanceText
-    }
-}
-
-// Extension for Float rounding
-extension Float {
-    func rounded(_ digits: Int) -> Float {
-        let multiplier = pow(10.0, Float(digits))
-        return (self * multiplier).rounded() / multiplier
-    }
+    // REMOVED: generateAppleMapsUrl() function since Apple Maps button was removed
 }
 
 #Preview {
-    NavigationView {
-        RouteResultsView(
-            routeData: RouteData(
-                startLocation: "15206 Newport Bridge Court, Sugar Land, TX, USA",
-                endLocation: "McDonalds, Commerce Street, Dallas, TX, USA",
-                stops: ["Walmart Supercenter, Market Place Boulevard, Irving, TX, USA"],
-                isRoundTrip: false,
-                considerTraffic: true
-            )
-        )
-    }
+    RouteResultsView(routeData: RouteData(
+        startLocation: "123 Main St, City, State",
+        endLocation: "456 Oak Ave, City, State",
+        stops: ["789 Pine St, City, State"],
+        isRoundTrip: false,
+        considerTraffic: true,
+        totalDistance: "12.5 miles",
+        estimatedTime: "25 min",
+        optimizedStops: []
+    ))
 }
