@@ -2,7 +2,7 @@
 //  RouteInputView.swift
 //  DriveLess
 //
-//  Clean, modern route input interface optimized for mobile
+//  Clean, modern route input interface with unified earthy theme
 //
 
 import SwiftUI
@@ -31,12 +31,13 @@ struct RouteInputView: View {
     @State private var endLocationDisplayName: String = ""
     @State private var stopDisplayNames: [String] = [""] // Parallel array to stops for display names
     
-    // Reference to location manager
+    // Reference to managers
     @ObservedObject var locationManager: LocationManager
     @ObservedObject var routeLoader: RouteLoader
     @StateObject private var savedAddressManager = SavedAddressManager()
-    @EnvironmentObject var settingsManager: SettingsManager  // ADD THIS LINE
-
+    @EnvironmentObject var settingsManager: SettingsManager
+    @EnvironmentObject var themeManager: ThemeManager
+    @EnvironmentObject var hapticManager: HapticManager
 
     // MARK: - Field Type Enum for Address Selection
     private enum AddressFieldType {
@@ -44,11 +45,6 @@ struct RouteInputView: View {
         case end
         case stop(index: Int)
     }
-    
-    // MARK: - Color Theme (Earthy)
-    private let primaryGreen = Color(red: 0.2, green: 0.4, blue: 0.2) // Dark forest green
-    private let accentBrown = Color(red: 0.4, green: 0.3, blue: 0.2) // Rich brown
-    private let lightGreen = Color(red: 0.7, green: 0.8, blue: 0.7) // Soft green
     
     var body: some View {
         NavigationStack {
@@ -72,12 +68,13 @@ struct RouteInputView: View {
                 .padding(.horizontal, 20)
                 .padding(.top, 10)
             }
-            .background(Color(.systemGroupedBackground))
+            .background(themeManager.background)
             .navigationBarBackButtonHidden(true)
             .onAppear {
+                // Load default settings
                 loadDefaultSettings()
                 
-                // ENHANCED: Check if there's a route to load with better timing
+                // Check if there's a route to load
                 print("🔍 RouteInputView onAppear - checking for route to load...")
                 
                 if let routeToLoad = routeLoader.routeToLoad {
@@ -98,29 +95,30 @@ struct RouteInputView: View {
                     print("🔍 No route to load found")
                 }
                 
-                // REFRESH SAVED ADDRESSES - NEW ADDITION
-                // This ensures we see newly saved addresses when returning to Search tab
+                // Refresh saved addresses
                 savedAddressManager.loadSavedAddresses()
                 print("🔄 Refreshed saved addresses on Search tab appear")
                 
-                // REFRESH USAGE TRACKING - NEW ADDITION
-                // This ensures we see updated usage when returning from RouteResultsView
+                // Refresh usage tracking
                 usageTracker.loadTodayUsage()
                 print("📊 Refreshed usage tracking on Search tab appear")
             }
             .onChange(of: settingsManager.defaultRoundTrip) { _, newValue in
-                // Only apply if this is a fresh route (not loaded from history)
-                if startLocation.isEmpty && endLocation.isEmpty && stops.allSatisfy({ $0.isEmpty }) {
+                // Only apply if this is a settings change, not initial load
+                if isRoundTrip != newValue {
                     isRoundTrip = newValue
-                    print("🔧 Applied default round trip setting: \(newValue)")
+                    
+                    if isRoundTrip && !startLocation.isEmpty {
+                        endLocation = startLocation
+                        endLocationDisplayName = startLocationDisplayName
+                    } else if !isRoundTrip && !savedEndLocation.isEmpty {
+                        endLocation = savedEndLocation
+                        endLocationDisplayName = extractBusinessName(savedEndLocation)
+                    }
                 }
             }
             .onChange(of: settingsManager.defaultTrafficEnabled) { _, newValue in
-                // Only apply if this is a fresh route (not loaded from history)
-                if startLocation.isEmpty && endLocation.isEmpty && stops.allSatisfy({ $0.isEmpty }) {
-                    considerTraffic = newValue
-                    print("🔧 Applied default traffic setting: \(newValue)")
-                }
+                considerTraffic = newValue
             }
             .navigationDestination(isPresented: $shouldNavigateToResults) {
                 if let routeData = routeDataForNavigation {
@@ -130,53 +128,37 @@ struct RouteInputView: View {
         }
     }
     
-    // MARK: - Header Section
+    // MARK: - Header Section (Themed)
     private var headerSection: some View {
-        VStack(spacing: 12) {
-            HStack {
-                // App logo/title
-                Text("DriveLess")
-                    .font(.largeTitle)
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Plan Your Route")
+                    .font(.title2)
                     .fontWeight(.bold)
-                    .foregroundColor(primaryGreen)
+                    .foregroundColor(themeManager.textPrimary)
                 
-                Spacer()
-                
-                // MARK: - Usage Indicator
-                usageIndicatorView
+                Text("Find the most efficient path")
+                    .font(.subheadline)
+                    .foregroundColor(themeManager.textSecondary)
             }
             
-            Text("Drive less, save time")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            Spacer()
+            
+            // Usage indicator (themed)
+            usageIndicator
         }
     }
-
-    // MARK: - Usage Indicator Component
-    private var usageIndicatorView: some View {
-        VStack(spacing: 4) {
-            HStack(spacing: 6) {
-                // Usage icon
-                Image(systemName: usageTracker.canPerformRouteCalculation() ? "chart.bar.fill" : "exclamationmark.triangle.fill")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(usageIndicatorColor)
-                
-                // Usage text - show ∞ for admins
-                if usageTracker.todayUsage == 0 && UserDefaults.standard.bool(forKey: "driveless_admin_mode") {
-                    Text("∞/∞")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(primaryGreen)
-                } else {
-                    Text("\(usageTracker.todayUsage)/\(UsageTrackingManager.DAILY_LIMIT)")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(usageIndicatorColor)
-                }
-            }
+    
+    // MARK: - Usage Indicator (Themed)
+    private var usageIndicator: some View {
+        VStack(alignment: .trailing, spacing: 4) {
+            Text("\(usageTracker.todayUsage)/\(UserDefaults.standard.bool(forKey: "driveless_admin_mode") ? "∞" : "\(UsageTrackingManager.DAILY_LIMIT)")")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundColor(themeManager.textPrimary)
             
             Text(UserDefaults.standard.bool(forKey: "driveless_admin_mode") ? "admin" : "routes today")
                 .font(.system(size: 10, weight: .medium))
-                .foregroundColor(.secondary)
+                .foregroundColor(themeManager.textSecondary)
             
             // Usage progress bar - hide for admins
             if !UserDefaults.standard.bool(forKey: "driveless_admin_mode") {
@@ -189,12 +171,12 @@ struct RouteInputView: View {
         .padding(.vertical, 8)
         .background(
             RoundedRectangle(cornerRadius: 8)
-                .fill(Color(.systemGray6))
+                .fill(themeManager.secondaryBackground)
                 .opacity(0.8)
         )
     }
 
-    // MARK: - Usage Indicator Color Logic
+    // MARK: - Usage Indicator Color Logic (Themed)
     private var usageIndicatorColor: Color {
         let percentage = usageTracker.getUsagePercentage()
         
@@ -203,126 +185,365 @@ struct RouteInputView: View {
         } else if percentage >= 0.8 {
             return .orange // Warning zone (80%+)
         } else {
-            return primaryGreen // Normal usage
+            return themeManager.primary // Normal usage
         }
     }
     
-    // MARK: - Actions and Handlers
-        
-        private func handleStartLocationSelected(_ place: GMSPlace) {
-            // Extract both business name and full address
-            let businessName = place.name ?? ""
-            let fullAddress = place.formattedAddress ?? ""
+    // MARK: - Route Input Card (Themed)
+    private var routeInputCard: some View {
+        VStack(spacing: 20) {
             
-            print("🏠 Selected start - Name: '\(businessName)', Address: '\(fullAddress)'")
-            
-            // Store the full address for API calls (this is what fixes the NOT_FOUND error)
-            if !fullAddress.isEmpty {
-                startLocation = fullAddress  // For API calls
-                print("✅ Using full address for API: '\(fullAddress)'")
-            } else if !businessName.isEmpty {
-                startLocation = businessName  // Fallback
-                print("⚠️ Using business name as fallback: '\(businessName)'")
+            // Start Location with saved address chips
+            VStack(alignment: .leading, spacing: 8) {
+                // Saved address chips
+                if !savedAddressManager.savedAddresses.isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(savedAddressManager.savedAddresses.prefix(4), id: \.id) { address in
+                                SavedAddressChip(address: address) {
+                                    hapticManager.buttonTap()
+                                    handleSavedAddressSelected(address, for: .start)
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 4)
+                    }
+                }
+                
+                InlineAutocompleteTextField(
+                    text: $startLocationDisplayName,
+                    placeholder: "Starting location",
+                    icon: "location.circle",
+                    iconColor: themeManager.primary,
+                    currentLocation: locationManager.location,
+                    onPlaceSelected: { place in
+                        handleStartLocationSelected(place)
+                    }
+                )
+                
+                // Current location button (themed)
+                if startLocationDisplayName.isEmpty {
+                    Button(action: {
+                        hapticManager.buttonTap()
+                        useCurrentLocation(for: .start)
+                    }) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "location.fill")
+                                .font(.system(size: 14, weight: .medium))
+                            Text("Use current location")
+                                .font(.system(size: 14, weight: .medium))
+                        }
+                        .foregroundColor(themeManager.primary)
+                    }
+                    .padding(.leading, 4)
+                }
             }
             
-            // Store the business name for display (this is what shows in the UI)
-            if !businessName.isEmpty {
-                startLocationDisplayName = businessName  // For display
-                print("✅ Using business name for display: '\(businessName)'")
-            } else {
-                startLocationDisplayName = fullAddress  // Fallback to address
-                print("ℹ️ Using address for display (no business name)")
-            }
+            // Visual connector line (themed)
+            connectorLine
             
-            // Add haptic feedback
-            let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-            impactFeedback.impactOccurred()
+            // Stops Section
+            stopsSection
             
-            // Auto-update end location if round trip is enabled
-            if isRoundTrip {
-                endLocation = startLocation
-                endLocationDisplayName = startLocationDisplayName
+            // Another connector line (themed)
+            connectorLine
+            
+            // End Location with saved address chips
+            VStack(alignment: .leading, spacing: 8) {
+                // Saved address chips for end location
+                if !savedAddressManager.savedAddresses.isEmpty && !isRoundTrip {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(savedAddressManager.savedAddresses.prefix(4), id: \.id) { address in
+                                SavedAddressChip(address: address) {
+                                    hapticManager.buttonTap()
+                                    handleSavedAddressSelected(address, for: .end)
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 4)
+                    }
+                }
+                
+                InlineAutocompleteTextField(
+                    text: $endLocationDisplayName,
+                    placeholder: isRoundTrip ? "Return to start" : "Destination",
+                    icon: "flag.checkered",
+                    iconColor: themeManager.primary,
+                    currentLocation: locationManager.location,
+                    onPlaceSelected: { place in
+                        handleEndLocationSelected(place)
+                    }
+                )
+                .disabled(isRoundTrip)
+                .opacity(isRoundTrip ? 0.6 : 1.0)
+                
+                // Current location button for end location (themed)
+                if endLocationDisplayName.isEmpty && !isRoundTrip {
+                    Button(action: {
+                        hapticManager.buttonTap()
+                        useCurrentLocation(for: .end)
+                    }) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "location.fill")
+                                .font(.system(size: 14, weight: .medium))
+                            Text("Use current location")
+                                .font(.system(size: 14, weight: .medium))
+                        }
+                        .foregroundColor(themeManager.primary)
+                    }
+                    .padding(.leading, 4)
+                }
             }
         }
-        
-        private func handleEndLocationSelected(_ place: GMSPlace) {
-            // Extract both business name and full address
-            let businessName = place.name ?? ""
-            let fullAddress = place.formattedAddress ?? ""
-            
-            print("🏠 Selected end - Name: '\(businessName)', Address: '\(fullAddress)'")
-            
-            // Store the full address for API calls
-            if !fullAddress.isEmpty {
-                endLocation = fullAddress  // For API calls
-                print("✅ Using full address for API: '\(fullAddress)'")
-            } else if !businessName.isEmpty {
-                endLocation = businessName  // Fallback
-                print("⚠️ Using business name as fallback: '\(businessName)'")
-            }
-            
-            // Store the business name for display
-            if !businessName.isEmpty {
-                endLocationDisplayName = businessName  // For display
-                print("✅ Using business name for display: '\(businessName)'")
-            } else {
-                endLocationDisplayName = fullAddress  // Fallback to address
-                print("ℹ️ Using address for display (no business name)")
-            }
-            
-            // Add haptic feedback
-            let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-            impactFeedback.impactOccurred()
-            
-            if !isRoundTrip {
-                savedEndLocation = endLocation
-            }
-        }
-        
-        private func handleStopLocationSelected(_ place: GMSPlace, at index: Int) {
-            // Extract both business name and full address
-            let businessName = place.name ?? ""
-            let fullAddress = place.formattedAddress ?? ""
-            
-            print("🏠 Selected stop \(index) - Name: '\(businessName)', Address: '\(fullAddress)'")
-            
-            // Ensure stops arrays are the right size
-            while stops.count <= index {
-                stops.append("")
-            }
-            while stopDisplayNames.count <= index {
-                stopDisplayNames.append("")
-            }
-            
-            // Store the full address for API calls
-            if !fullAddress.isEmpty {
-                stops[index] = fullAddress  // For API calls
-                print("✅ Using full address for API: '\(fullAddress)'")
-            } else if !businessName.isEmpty {
-                stops[index] = businessName  // Fallback
-                print("⚠️ Using business name as fallback: '\(businessName)'")
-            }
-            
-            // Store the business name for display
-            if !businessName.isEmpty {
-                stopDisplayNames[index] = businessName  // For display
-                print("✅ Using business name for display: '\(businessName)'")
-            } else {
-                stopDisplayNames[index] = fullAddress  // Fallback to address
-                print("ℹ️ Using address for display (no business name)")
-            }
-        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(themeManager.cardBackground)
+                .shadow(color: themeManager.cardShadow(), radius: 8, x: 0, y: 4)
+        )
+    }
     
-    /// Handles when a saved address chip is tapped
-    /// - Parameters:
-    ///   - address: The saved address that was selected
-    ///   - fieldType: Which field to populate (start, end, or specific stop)
+    // MARK: - Visual Connector Line (Themed)
+    private var connectorLine: some View {
+        HStack {
+            Spacer()
+                .frame(width: 28) // Align with icon position
+            
+            Rectangle()
+                .fill(themeManager.textTertiary.opacity(0.3))
+                .frame(width: 2, height: 20)
+            
+            Spacer()
+        }
+    }
+    
+    // MARK: - Stops Section (Themed)
+    private var stopsSection: some View {
+        VStack(spacing: 12) {
+            ForEach(stops.indices, id: \.self) { index in
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        InlineAutocompleteTextField(
+                            text: Binding(
+                                get: {
+                                    index < stopDisplayNames.count ? stopDisplayNames[index] : ""
+                                },
+                                set: { newValue in
+                                    while stopDisplayNames.count <= index {
+                                        stopDisplayNames.append("")
+                                    }
+                                    stopDisplayNames[index] = newValue
+                                }
+                            ),
+                            placeholder: "Stop \(index + 1) (optional)",
+                            icon: "mappin.circle",
+                            iconColor: themeManager.secondary,
+                            currentLocation: locationManager.location,
+                            onPlaceSelected: { place in
+                                handleStopLocationSelected(place, at: index)
+                            }
+                        )
+                        
+                        // Remove stop button (themed)
+                        if stops.count > 1 {
+                            Button(action: {
+                                hapticManager.buttonTap()
+                                removeStop(at: index)
+                            }) {
+                                Image(systemName: "minus.circle.fill")
+                                    .font(.system(size: 20))
+                                    .foregroundColor(.red)
+                            }
+                        }
+                    }
+                    
+                    // Current location button for stops (themed)
+                    if index < stopDisplayNames.count && stopDisplayNames[index].isEmpty {
+                        Button(action: {
+                            hapticManager.buttonTap()
+                            useCurrentLocation(for: .stop(index: index))
+                        }) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "location.fill")
+                                    .font(.system(size: 12, weight: .medium))
+                                Text("Use current location")
+                                    .font(.system(size: 12, weight: .medium))
+                            }
+                            .foregroundColor(themeManager.secondary)
+                        }
+                        .padding(.leading, 4)
+                    }
+                }
+                
+                // Add connector line between stops if not the last stop
+                if index < stops.count - 1 {
+                    connectorLine
+                }
+            }
+            
+            // Add stop button (themed)
+            if stops.count < 8 {
+                Button(action: {
+                    hapticManager.buttonTap()
+                    addStop()
+                }) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(themeManager.accent)
+                        
+                        Text("Add Stop")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(themeManager.accent)
+                    }
+                }
+                .padding(.top, 4)
+            }
+        }
+    }
+    
+    // MARK: - Options Card (Themed)
+    private var optionsCard: some View {
+        VStack(spacing: 16) {
+            
+            // Round Trip Toggle
+            toggleRow(
+                icon: "arrow.triangle.2.circlepath",
+                title: "Round Trip",
+                subtitle: "Return to starting location",
+                isOn: $isRoundTrip,
+                color: themeManager.primary
+            )
+            
+            // Divider
+            Rectangle()
+                .fill(themeManager.textTertiary.opacity(0.3))
+                .frame(height: 1)
+                .padding(.horizontal, 16)
+            
+            // Traffic Toggle
+            toggleRow(
+                icon: "car.fill",
+                title: "Consider Traffic",
+                subtitle: "Include current traffic conditions",
+                isOn: $considerTraffic,
+                color: themeManager.secondary
+            )
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(themeManager.cardBackground)
+                .shadow(color: themeManager.cardShadow(), radius: 8, x: 0, y: 4)
+        )
+    }
+    
+    // MARK: - Toggle Row Component (Themed)
+    private func toggleRow(
+        icon: String,
+        title: String,
+        subtitle: String,
+        isOn: Binding<Bool>,
+        color: Color
+    ) -> some View {
+        HStack(spacing: 16) {
+            // Icon
+            Image(systemName: icon)
+                .font(.system(size: 20, weight: .medium))
+                .foregroundColor(color)
+                .frame(width: 24)
+            
+            // Text
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(themeManager.textPrimary)
+                
+                Text(subtitle)
+                    .font(.system(size: 14))
+                    .foregroundColor(themeManager.textSecondary)
+            }
+            
+            Spacer()
+            
+            // Toggle
+            Toggle("", isOn: isOn)
+                .labelsHidden()
+                .tint(color)
+                .onChange(of: isOn.wrappedValue) { _, newValue in
+                    hapticManager.toggle()
+                    
+                    // Handle round trip logic specifically
+                    if title == "Round Trip" {
+                        handleRoundTripToggle(newValue)
+                    }
+                }
+        }
+    }
+    
+    // MARK: - Optimize Button (Themed)
+    private var optimizeButton: some View {
+        Button(action: handleOptimizeButtonTap) {
+            HStack(spacing: 12) {
+                Image(systemName: "map.fill")
+                    .font(.system(size: 18, weight: .semibold))
+                
+                Text(optimizeButtonText)
+                    .font(.system(size: 18, weight: .semibold))
+            }
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .frame(height: 56)
+            .background(themeManager.buttonGradient(isPressed: !canOptimizeRoute))
+            .cornerRadius(16)
+            .shadow(color: themeManager.cardShadow(), radius: 8, x: 0, y: 4)
+        }
+        .disabled(!canOptimizeRoute)
+        .opacity(canOptimizeRoute ? 1.0 : 0.6)
+        .scaleEffect(canOptimizeRoute ? 1.0 : 0.98)
+        .animation(.easeInOut(duration: 0.2), value: canOptimizeRoute)
+        .alert("Daily Limit Reached", isPresented: $showingUsageLimitAlert) {
+            Button("OK") { }
+        } message: {
+            Text("You've used \(usageTracker.todayUsage) out of \(UsageTrackingManager.DAILY_LIMIT) route calculations today. Your limit will reset at midnight.")
+        }
+    }
+    
+    // MARK: - Computed Properties
+    
+    private var optimizeButtonText: String {
+        if !canOptimizeRoute {
+            if startLocation.isEmpty || endLocation.isEmpty {
+                return "Enter start and destination"
+            } else if stops.allSatisfy({ $0.isEmpty }) {
+                return "Add at least one stop"
+            } else {
+                return "Enter locations to optimize"
+            }
+        } else {
+            return "Optimize Route"
+        }
+    }
+    
+    private var optimizeButtonColor: Color {
+        return canOptimizeRoute ? themeManager.primary : themeManager.textTertiary
+    }
+    
+    private var canOptimizeRoute: Bool {
+        let hasStartAndEnd = !startLocation.isEmpty && !endLocation.isEmpty
+        let hasAtLeastOneStop = stops.contains { !$0.isEmpty }
+        return hasStartAndEnd && hasAtLeastOneStop
+    }
+    
+    // MARK: - Helper Methods
+    
+    private func loadDefaultSettings() {
+        isRoundTrip = settingsManager.defaultRoundTrip
+        considerTraffic = settingsManager.defaultTrafficEnabled
+    }
+    
     private func handleSavedAddressSelected(_ address: SavedAddress, for fieldType: AddressFieldType) {
-        // Add haptic feedback
-        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-        impactFeedback.impactOccurred()
-        
-        // Get the address data
         let fullAddress = address.fullAddress ?? ""
         let displayName = address.label ?? ""
         
@@ -363,504 +584,42 @@ struct RouteInputView: View {
         }
     }
     
-    // MARK: - Route Input Card
-    private var routeInputCard: some View {
-        VStack(spacing: 20) {
-            
-            // Start Location - Updated to show business name but store full address
-            VStack(alignment: .leading, spacing: 8) {
-                // SAVED ADDRESS CHIPS - NEW ADDITION
-                if !savedAddressManager.savedAddresses.isEmpty {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            ForEach(savedAddressManager.savedAddresses.prefix(4), id: \.id) { address in
-                                SavedAddressChip(address: address) {
-                                    // Handle chip tap - populate start location
-                                    handleSavedAddressSelected(address, for: .start)
-                                }
-                            }
-                        }
-                        .padding(.horizontal, 4)
-                    }
-                }
-                
-                InlineAutocompleteTextField(
-                    text: $startLocationDisplayName, // Display the business name
-                    placeholder: "Start",
-                    icon: "location.circle.fill",
-                    iconColor: primaryGreen,
-                    currentLocation: locationManager.location,
-                    onPlaceSelected: { place in
-                        handleStartLocationSelected(place)
-                    }
-                )
-                
-                // Use current location button
-                if true { // locationManager.location != nil {
-                    Button(action: useCurrentLocationForStart) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "location.fill")
-                                .font(.system(size: 14))
-                            Text("Use current location")
-                                .font(.system(size: 14, weight: .medium))
-                        }
-                        .foregroundColor(primaryGreen)
-                    }
-                    .padding(.leading, 4)
-                }
-            }
-            
-            
-            // Visual connector line
-            connectorLine
-            
-            // Stops Section
-            stopsSection
-            
-            // Another connector line
-            connectorLine
-            
-            // End Location - Updated to show business name but store full address
-            VStack(alignment: .leading, spacing: 8) {
-                // SAVED ADDRESS CHIPS FOR END LOCATION - NEW ADDITION
-                if !savedAddressManager.savedAddresses.isEmpty && !isRoundTrip {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            ForEach(savedAddressManager.savedAddresses.prefix(4), id: \.id) { address in
-                                SavedAddressChip(address: address) {
-                                    // Handle chip tap - populate end location
-                                    handleSavedAddressSelected(address, for: .end)
-                                }
-                            }
-                        }
-                        .padding(.horizontal, 4)
-                    }
-                }
-                
-                InlineAutocompleteTextField(
-                    text: $endLocationDisplayName, // Display the business name
-                    placeholder: isRoundTrip ? "Return to start" : "Destination",
-                    icon: "flag.checkered",
-                    iconColor: primaryGreen,
-                    currentLocation: locationManager.location,
-                    onPlaceSelected: { place in
-                        handleEndLocationSelected(place)
-                    }
-                )
-                .disabled(isRoundTrip)
-                .opacity(isRoundTrip ? 0.6 : 1.0)
-                
-                // ADD THIS BLOCK RIGHT AFTER THE ABOVE:
-                // Use current location button for end location
-                if !isRoundTrip {
-                    Button(action: useCurrentLocationForEnd) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "location.fill")
-                                .font(.system(size: 14))
-                            Text("Use current location")
-                                .font(.system(size: 14, weight: .medium))
-                        }
-                        .foregroundColor(primaryGreen)
-                    }
-                    .padding(.leading, 4)
-                }
-            }
-        }
-        .padding(20)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color(.systemBackground))
-                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
-        )
-    }
-    
-    // MARK: - Visual Connector Line
-    private var connectorLine: some View {
-        HStack {
-            Spacer()
-                .frame(width: 36) // Align with icon position
-            
-            Rectangle()
-                .fill(Color.gray.opacity(0.3))
-                .frame(width: 2, height: 20)
-            
-            Spacer()
-        }
-    }
-    
-    // MARK: - Stops Section
-    private var stopsSection: some View {
-        VStack(spacing: 16) {
-            ForEach(stops.indices, id: \.self) { index in
-                VStack(alignment: .leading, spacing: 8) {
-                    // SAVED ADDRESS CHIPS FOR STOPS - NEW ADDITION
-                        if !savedAddressManager.savedAddresses.isEmpty {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 8) {
-                                ForEach(savedAddressManager.savedAddresses.prefix(4), id: \.id) { address in
-                                    SavedAddressChip(address: address) {
-                                        // Handle chip tap - populate this specific stop
-                                        handleSavedAddressSelected(address, for: .stop(index: index))
-                                    }
-                                }
-                            }
-                            .padding(.horizontal, 4)
-                        }
-                    }
-                    
-                    VStack(spacing: 4) {
-                        HStack(spacing: 12) {
-                            InlineAutocompleteTextField(
-                                text: $stopDisplayNames[index], // Display the business name
-                                placeholder: "Add stop",
-                                icon: "mappin.circle.fill",
-                                iconColor: accentBrown,  // Changed from Color(.systemBlue) to match earthy theme
-                                currentLocation: locationManager.location,
-                                onPlaceSelected: { place in
-                                    handleStopLocationSelected(place, at: index)
-                                }
-                            )
-                            
-                            // Remove stop button (only show if more than 1 stop)
-                            if stops.count > 1 {
-                                Button(action: { removeStop(at: index) }) {
-                                    Image(systemName: "minus.circle.fill")
-                                        .font(.system(size: 24))
-                                        .foregroundColor(.red)
-                                }
-                            }
-                        }
-                        
-                        // Use current location button for this stop
-                        Button(action: { useCurrentLocationForStop(at: index) }) {
-                            HStack(spacing: 8) {
-                                Image(systemName: "location.fill")
-                                    .font(.system(size: 14))
-                                Text("Use current location")
-                                    .font(.system(size: 14, weight: .medium))
-                            }
-                            .foregroundColor(accentBrown)
-                        }
-                        .padding(.leading, 4)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                }
-            }
-            
-            // Add stop button
-            Button(action: addStop) {
-                HStack(spacing: 8) {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 16))
-                    Text("Add stop")
-                        .font(.system(size: 16, weight: .medium))
-                }
-                .foregroundColor(primaryGreen)
-                .padding(.leading, 40) // Align with text field content
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-        }
-    }
-    
-    // MARK: - Options Card
-    private var optionsCard: some View {
-        VStack(spacing: 16) {
-            
-            // Round Trip Toggle
-            toggleRow(
-                icon: "arrow.triangle.2.circlepath",
-                title: "Round trip",
-                subtitle: "Return to starting location",
-                isOn: $isRoundTrip,
-                color: primaryGreen
-            )
-            .onChange(of: isRoundTrip) { _, newValue in
-                handleRoundTripToggle(newValue)
-            }
-            
-            Divider()
-            
-            // Traffic Toggle
-            toggleRow(
-                icon: "car.fill",
-                title: "Consider traffic",
-                subtitle: "Use real-time traffic data",
-                isOn: $considerTraffic,
-                color: .orange
-            )
-        }
-        .padding(20)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color(.systemBackground))
-                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
-        )
-    }
-    
-    // MARK: - Toggle Row Component
-    private func toggleRow(
-        icon: String,
-        title: String,
-        subtitle: String,
-        isOn: Binding<Bool>,
-        color: Color
-    ) -> some View {
-        HStack(spacing: 16) {
-            // Icon
-            Image(systemName: icon)
-                .font(.system(size: 20, weight: .medium))
-                .foregroundColor(color)
-                .frame(width: 24)
-            
-            // Text
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(.primary)
-                
-                Text(subtitle)
-                    .font(.system(size: 14))
-                    .foregroundColor(.secondary)
-            }
-            
-            Spacer()
-            
-            // Toggle
-            Toggle("", isOn: isOn)
-                .labelsHidden()
-                .tint(color)
-        }
-    }
-    
-    // MARK: - Optimize Button
-    private var optimizeButton: some View {
-        Button(action: handleOptimizeButtonTap) {
-            HStack(spacing: 12) {
-                Image(systemName: "map.fill")
-                    .font(.system(size: 18, weight: .semibold))
-                
-                Text(optimizeButtonText)
-                    .font(.system(size: 18, weight: .semibold))
-            }
-            .foregroundColor(.white)
-            .frame(maxWidth: .infinity)
-            .frame(height: 56) // Larger touch target
-            .background(
-                LinearGradient(
-                    gradient: Gradient(colors: [optimizeButtonColor, optimizeButtonColor.opacity(0.8)]),
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-            )
-            .cornerRadius(16)
-            .shadow(color: optimizeButtonColor.opacity(0.3), radius: 8, x: 0, y: 4)
-        }
-        .disabled(!canOptimizeRoute)
-        .opacity(canOptimizeRoute ? 1.0 : 0.6)
-        .scaleEffect(canOptimizeRoute ? 1.0 : 0.98)
-        .animation(.easeInOut(duration: 0.2), value: canOptimizeRoute)
-        .alert("Daily Limit Reached", isPresented: $showingUsageLimitAlert) {
-            Button("OK") { }
-        } message: {
-            Text("You've used \(usageTracker.todayUsage) out of \(UsageTrackingManager.DAILY_LIMIT) route calculations today. Your limit will reset at midnight.")
-        }
-    }
-
-    // MARK: - Optimize Button Helper Methods
-    private func handleOptimizeButtonTap() {
-        // Check usage limits before navigating
-        if !usageTracker.canPerformRouteCalculation() {
-            showingUsageLimitAlert = true
-            return
+    private func handleStartLocationSelected(_ place: GMSPlace) {
+        let businessName = place.name ?? ""
+        let fullAddress = place.formattedAddress ?? ""
+        
+        // Store both for different purposes
+        startLocation = fullAddress // Full address for API calls
+        startLocationDisplayName = businessName.isEmpty ? extractBusinessName(fullAddress) : businessName
+        
+        // Auto-update end location if round trip is enabled
+        if isRoundTrip {
+            endLocation = fullAddress
+            endLocationDisplayName = startLocationDisplayName
         }
         
-        // Prepare route data and trigger navigation
-        routeDataForNavigation = createRouteData()
-        shouldNavigateToResults = true
-    }
-
-    private var optimizeButtonText: String {
-        if !usageTracker.canPerformRouteCalculation() {
-            return "Daily Limit Reached"
-        }
-        return "Find Best Route"
-    }
-
-    private var optimizeButtonColor: Color {
-        if !usageTracker.canPerformRouteCalculation() {
-            return .gray
-        }
-        return primaryGreen
+        print("📍 Start location set: '\(startLocationDisplayName)' (Full: '\(startLocation)')")
     }
     
-    
-    private func useCurrentLocationForStart() {
-        // Add haptic feedback
-        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-        impactFeedback.impactOccurred()
+    private func handleEndLocationSelected(_ place: GMSPlace) {
+        let businessName = place.name ?? ""
+        let fullAddress = place.formattedAddress ?? ""
         
-        // Check location authorization status
-        switch locationManager.authorizationStatus {
-        case .notDetermined:
-            print("📍 Requesting location permission...")
-            locationManager.requestLocationPermission()
-            // Show user feedback
-            startLocationDisplayName = "Requesting location access..."
-            
-            // Try again after a short delay to see if permission was granted
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                if locationManager.authorizationStatus == .authorizedWhenInUse || locationManager.authorizationStatus == .authorizedAlways {
-                    useCurrentLocationForStart() // Retry
-                } else {
-                    startLocationDisplayName = ""
-                    // Show alert about location access
-                    showLocationPermissionAlert()
-                }
-            }
-            
-        case .denied, .restricted:
-            print("❌ Location access denied")
-            showLocationPermissionAlert()
-            
-        case .authorizedWhenInUse, .authorizedAlways:
-            // Check if we have a current location
-            guard let location = locationManager.location else {
-                print("📍 Getting current location...")
-                startLocationDisplayName = "Getting location..."
-                locationManager.getCurrentLocation()
-                
-                // Wait a moment for location to be acquired
-                DispatchQueue.main.asyncAfter(deadline: .now() + 10.5) {
-                    if let location = locationManager.location {
-                        reverseGeocodeLocation(location)
-                    } else {
-                        startLocationDisplayName = ""
-                        showLocationTimeoutAlert()
-                    }
-                }
-                return
-            }
-            
-            // We have location, reverse geocode it
-            reverseGeocodeLocation(location)
-            
-        @unknown default:
-            print("⚠️ Unknown location authorization status")
-            showLocationPermissionAlert()
+        // Store both for different purposes
+        endLocation = fullAddress // Full address for API calls
+        endLocationDisplayName = businessName.isEmpty ? extractBusinessName(fullAddress) : businessName
+        
+        // Save this as the saved end location for when round trip is disabled
+        if !isRoundTrip {
+            savedEndLocation = fullAddress
         }
+        
+        print("📍 End location set: '\(endLocationDisplayName)' (Full: '\(endLocation)')")
     }
     
-    private func useCurrentLocationForEnd() {
-        // Add haptic feedback
-        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-        impactFeedback.impactOccurred()
-        
-        // Check location authorization status
-        switch locationManager.authorizationStatus {
-        case .notDetermined:
-            print("📍 Requesting location permission for end location...")
-            locationManager.requestLocationPermission()
-            // Show user feedback
-            endLocationDisplayName = "Requesting location access..."
-            
-            // Try again after a short delay to see if permission was granted
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                if locationManager.authorizationStatus == .authorizedWhenInUse || locationManager.authorizationStatus == .authorizedAlways {
-                    useCurrentLocationForEnd() // Retry
-                } else {
-                    endLocationDisplayName = ""
-                    showLocationPermissionAlert()
-                }
-            }
-            
-        case .denied, .restricted:
-            print("❌ Location access denied for end location")
-            showLocationPermissionAlert()
-            
-        case .authorizedWhenInUse, .authorizedAlways:
-            // Check if we have a current location
-            guard let location = locationManager.location else {
-                print("📍 Getting current location for end...")
-                endLocationDisplayName = "Getting location..."
-                locationManager.getCurrentLocation()
-                
-                // Wait a moment for location to be acquired
-                DispatchQueue.main.asyncAfter(deadline: .now() + 10.5) {
-                    if let location = locationManager.location {
-                        reverseGeocodeLocationForEnd(location)
-                    } else {
-                        endLocationDisplayName = ""
-                        showLocationTimeoutAlert()
-                    }
-                }
-                return
-            }
-            
-            // We have location, reverse geocode it
-            reverseGeocodeLocationForEnd(location)
-            
-        @unknown default:
-            print("⚠️ Unknown location authorization status for end location")
-            showLocationPermissionAlert()
-        }
-    }
-
-    // Helper function for reverse geocoding end location
-    private func reverseGeocodeLocationForEnd(_ location: CLLocation) {
-        print("📍 Reverse geocoding end location: \(location.coordinate.latitude), \(location.coordinate.longitude)")
-        
-        let geocoder = CLGeocoder()
-        geocoder.reverseGeocodeLocation(location) { placemarks, error in
-            DispatchQueue.main.async {
-                if let error = error {
-                    print("❌ Reverse geocoding failed for end location: \(error.localizedDescription)")
-                    // Fallback to coordinates if reverse geocoding fails
-                    let coordinateString = "\(location.coordinate.latitude), \(location.coordinate.longitude)"
-                    endLocation = coordinateString
-                    endLocationDisplayName = "Current Location"
-                    return
-                }
-                
-                if let placemark = placemarks?.first {
-                    // Build readable address from placemark
-                    var addressComponents: [String] = []
-                    
-                    if let streetNumber = placemark.subThoroughfare {
-                        addressComponents.append(streetNumber)
-                    }
-                    if let streetName = placemark.thoroughfare {
-                        addressComponents.append(streetName)
-                    }
-                    if let city = placemark.locality {
-                        addressComponents.append(city)
-                    }
-                    if let state = placemark.administrativeArea {
-                        addressComponents.append(state)
-                    }
-                    if let zipCode = placemark.postalCode {
-                        addressComponents.append(zipCode)
-                    }
-                    
-                    let fullAddress = addressComponents.joined(separator: ", ")
-                    print("✅ Reverse geocoded end location to: \(fullAddress)")
-                    
-                    // Store both full address and display name for end location
-                    endLocation = fullAddress
-                    endLocationDisplayName = "Current Location"
-                    
-                    // Save end location if not round trip
-                    if !isRoundTrip {
-                        savedEndLocation = fullAddress
-                    }
-                }
-            }
-        }
-    }
-
-    private func useCurrentLocationForStop(at index: Int) {
-        // Add haptic feedback
-        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-        impactFeedback.impactOccurred()
+    private func handleStopLocationSelected(_ place: GMSPlace, at index: Int) {
+        let businessName = place.name ?? ""
+        let fullAddress = place.formattedAddress ?? ""
         
         // Ensure arrays are the right size
         while stops.count <= index {
@@ -870,245 +629,286 @@ struct RouteInputView: View {
             stopDisplayNames.append("")
         }
         
-        // Check location authorization status
+        // Store both versions
+        stops[index] = fullAddress
+        stopDisplayNames[index] = businessName.isEmpty ? extractBusinessName(fullAddress) : businessName
+        
+        print("📍 Stop \(index + 1) set: '\(stopDisplayNames[index])' (Full: '\(stops[index])')")
+    }
+    
+    private func useCurrentLocation(for fieldType: AddressFieldType) {
+        // Check location permission status first
         switch locationManager.authorizationStatus {
         case .notDetermined:
-            print("📍 Requesting location permission for stop \(index)...")
+            print("📍 Location permission not determined, requesting...")
             locationManager.requestLocationPermission()
-            // Show user feedback
-            stopDisplayNames[index] = "Requesting location access..."
-            
-            // Try again after a short delay to see if permission was granted
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                if locationManager.authorizationStatus == .authorizedWhenInUse || locationManager.authorizationStatus == .authorizedAlways {
-                    useCurrentLocationForStop(at: index) // Retry
-                } else {
-                    stopDisplayNames[index] = ""
-                    showLocationPermissionAlert()
-                }
-            }
+            hapticManager.error()
+            return
             
         case .denied, .restricted:
-            print("❌ Location access denied for stop \(index)")
-            showLocationPermissionAlert()
+            print("❌ Location permission denied")
+            hapticManager.error()
+            // Could show an alert here to guide user to settings
+            return
             
         case .authorizedWhenInUse, .authorizedAlways:
-            // Check if we have a current location
-            guard let location = locationManager.location else {
-                print("📍 Getting current location for stop \(index)...")
-                stopDisplayNames[index] = "Getting location..."
-                locationManager.getCurrentLocation()
-                
-                // Wait longer for initial GPS fix
-                DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
-                    if let location = locationManager.location {
-                        reverseGeocodeLocationForStop(location, at: index)
-                    } else {
-                        stopDisplayNames[index] = ""
-                        showLocationTimeoutAlert()
-                    }
-                }
-                return
-            }
-            
-            // We have location, reverse geocode it
-            reverseGeocodeLocationForStop(location, at: index)
+            break // Continue with location usage
             
         @unknown default:
-            print("⚠️ Unknown location authorization status for stop \(index)")
-            showLocationPermissionAlert()
+            print("❌ Unknown location authorization status")
+            hapticManager.error()
+            return
         }
-    }
-
-    // Helper function for reverse geocoding stop location
-    private func reverseGeocodeLocationForStop(_ location: CLLocation, at index: Int) {
-        print("📍 Reverse geocoding stop \(index) location: \(location.coordinate.latitude), \(location.coordinate.longitude)")
         
-        let geocoder = CLGeocoder()
-        geocoder.reverseGeocodeLocation(location) { placemarks, error in
-            DispatchQueue.main.async {
-                // Ensure arrays are still the right size
-                while stops.count <= index {
-                    stops.append("")
-                }
-                while stopDisplayNames.count <= index {
-                    stopDisplayNames.append("")
-                }
-                
-                if let error = error {
-                    print("❌ Reverse geocoding failed for stop \(index): \(error.localizedDescription)")
-                    // Fallback to coordinates if reverse geocoding fails
-                    let coordinateString = "\(location.coordinate.latitude), \(location.coordinate.longitude)"
-                    stops[index] = coordinateString
-                    stopDisplayNames[index] = "Current Location"
-                    return
-                }
-                
-                if let placemark = placemarks?.first {
-                    // Build readable address from placemark
-                    var addressComponents: [String] = []
-                    
-                    if let streetNumber = placemark.subThoroughfare {
-                        addressComponents.append(streetNumber)
-                    }
-                    if let streetName = placemark.thoroughfare {
-                        addressComponents.append(streetName)
-                    }
-                    if let city = placemark.locality {
-                        addressComponents.append(city)
-                    }
-                    if let state = placemark.administrativeArea {
-                        addressComponents.append(state)
-                    }
-                    if let zipCode = placemark.postalCode {
-                        addressComponents.append(zipCode)
-                    }
-                    
-                    let fullAddress = addressComponents.joined(separator: ", ")
-                    print("✅ Reverse geocoded stop \(index) to: \(fullAddress)")
-                    
-                    // Store both full address and display name for this stop
-                    stops[index] = fullAddress
-                    stopDisplayNames[index] = "Current Location"
-                }
-            }
+        // Check if we have a recent location (within last 5 minutes)
+        if let location = locationManager.location,
+           location.timestamp.timeIntervalSinceNow > -300 {
+            print("📍 Using recent location: \(location.coordinate.latitude), \(location.coordinate.longitude)")
+            populateLocationField(location, for: fieldType)
+            return
         }
-    }
-    // Helper function for reverse geocoding
-    private func reverseGeocodeLocation(_ location: CLLocation) {
-        print("📍 Reverse geocoding location: \(location.coordinate.latitude), \(location.coordinate.longitude)")
         
-        let geocoder = CLGeocoder()
-        geocoder.reverseGeocodeLocation(location) { placemarks, error in
-            DispatchQueue.main.async {
-                if let error = error {
-                    print("❌ Reverse geocoding failed: \(error.localizedDescription)")
-                    // Fallback to coordinates if reverse geocoding fails
-                    let coordinateString = "\(location.coordinate.latitude), \(location.coordinate.longitude)"
-                    startLocation = coordinateString
-                    startLocationDisplayName = "Current Location"
-                    return
-                }
-                
-                if let placemark = placemarks?.first {
-                    // Build readable address from placemark
-                    var addressComponents: [String] = []
-                    
-                    if let streetNumber = placemark.subThoroughfare {
-                        addressComponents.append(streetNumber)
-                    }
-                    if let streetName = placemark.thoroughfare {
-                        addressComponents.append(streetName)
-                    }
-                    if let city = placemark.locality {
-                        addressComponents.append(city)
-                    }
-                    if let state = placemark.administrativeArea {
-                        addressComponents.append(state)
-                    }
-                    if let zipCode = placemark.postalCode {
-                        addressComponents.append(zipCode)
-                    }
-                    
-                    let fullAddress = addressComponents.joined(separator: ", ")
-                    print("✅ Reverse geocoded to: \(fullAddress)")
-                    
-                    // Store both full address and display name
-                    startLocation = fullAddress
-                    startLocationDisplayName = "Current Location"
-                    
-                    // Auto-update end location if round trip is enabled
-                    if isRoundTrip {
-                        endLocation = fullAddress
-                        endLocationDisplayName = "Current Location"
+        // No recent location available, request fresh location
+        print("📍 Requesting fresh location...")
+        setLoadingState(for: fieldType, loading: true)
+        
+        // Request fresh location
+        locationManager.getCurrentLocation()
+        
+        // Check for location after a reasonable delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            if let location = self.locationManager.location {
+                print("📍 Got fresh location: \(location.coordinate.latitude), \(location.coordinate.longitude)")
+                self.populateLocationField(location, for: fieldType)
+            } else {
+                print("❌ Still no location after 2 seconds, trying again...")
+                // Try one more time with a longer delay
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                    if let location = self.locationManager.location {
+                        print("📍 Got delayed location: \(location.coordinate.latitude), \(location.coordinate.longitude)")
+                        self.populateLocationField(location, for: fieldType)
+                    } else {
+                        print("❌ Failed to get location after 5 total seconds")
+                        self.setLoadingState(for: fieldType, loading: false)
+                        self.hapticManager.error()
                     }
                 }
             }
         }
     }
-
-    // Helper function to show location permission alert
-    private func showLocationPermissionAlert() {
-        // For now, just update the field with a message
-        // Later we can add a proper alert
-        print("❌ Location permission needed")
-        startLocationDisplayName = ""
+    
+    private func setLoadingState(for fieldType: AddressFieldType, loading: Bool) {
+        let displayText = loading ? "Getting location..." : ""
+        
+        switch fieldType {
+        case .start:
+            if loading {
+                startLocationDisplayName = displayText
+            } else {
+                startLocationDisplayName = ""
+            }
+            
+        case .end:
+            if loading {
+                endLocationDisplayName = displayText
+            } else {
+                endLocationDisplayName = ""
+            }
+            
+        case .stop(let index):
+            // Ensure arrays are the right size
+            while stopDisplayNames.count <= index {
+                stopDisplayNames.append("")
+            }
+            stopDisplayNames[index] = displayText
+        }
     }
-
-    // Helper function to show location timeout alert
-    private func showLocationTimeoutAlert() {
-        print("⏰ Location request timed out")
-        startLocationDisplayName = ""
+    
+    private func populateLocationField(_ location: CLLocation, for fieldType: AddressFieldType) {
+        let coordinates = "\(location.coordinate.latitude), \(location.coordinate.longitude)"
+        let displayName = "Current Location"
+        
+        print("✅ Using location: \(coordinates)")
+        hapticManager.success()
+        
+        // Populate the appropriate field
+        switch fieldType {
+        case .start:
+            startLocation = coordinates
+            startLocationDisplayName = displayName
+            
+            // Auto-update end location if round trip is enabled
+            if isRoundTrip {
+                endLocation = coordinates
+                endLocationDisplayName = displayName
+            }
+            
+        case .end:
+            endLocation = coordinates
+            endLocationDisplayName = displayName
+            
+            // Save end location if not round trip
+            if !isRoundTrip {
+                savedEndLocation = coordinates
+            }
+            
+        case .stop(let index):
+            // Ensure arrays are the right size
+            while stops.count <= index {
+                stops.append("")
+            }
+            while stopDisplayNames.count <= index {
+                stopDisplayNames.append("")
+            }
+            
+            stops[index] = coordinates
+            stopDisplayNames[index] = displayName
+        }
     }
     
     private func addStop() {
-        // Add haptic feedback
-        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
-        impactFeedback.impactOccurred()
-        
-        withAnimation(.easeInOut(duration: 0.3)) {
-            stops.append("")
-            stopDisplayNames.append("") // Keep parallel arrays in sync
-        }
+        stops.append("")
+        stopDisplayNames.append("")
     }
     
     private func removeStop(at index: Int) {
-        // Add haptic feedback
-        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
-        impactFeedback.impactOccurred()
-        
-        withAnimation(.easeInOut(duration: 0.3)) {
+        if index < stops.count {
             stops.remove(at: index)
-            // Remove from display names array too, with bounds checking
-            if index < stopDisplayNames.count {
-                stopDisplayNames.remove(at: index)
+        }
+        if index < stopDisplayNames.count {
+            stopDisplayNames.remove(at: index)
+        }
+    }
+    
+    private func handleRoundTripToggle(_ enabled: Bool) {
+        if enabled {
+            // Save current end location before overwriting
+            if !endLocation.isEmpty && endLocation != startLocation {
+                savedEndLocation = endLocation
+            }
+            
+            // Set end location to start location
+            endLocation = startLocation
+            endLocationDisplayName = startLocationDisplayName
+        } else {
+            // Restore saved end location if available
+            if !savedEndLocation.isEmpty {
+                endLocation = savedEndLocation
+                endLocationDisplayName = extractBusinessName(savedEndLocation)
+            } else {
+                endLocation = ""
+                endLocationDisplayName = ""
             }
         }
     }
     
-    private func handleRoundTripToggle(_ newValue: Bool) {
-        // Add haptic feedback
-        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-        impactFeedback.impactOccurred()
-        
-        if newValue {
-            // Save current end location and set to start location
-            savedEndLocation = endLocation
-            endLocation = startLocation
-            endLocationDisplayName = startLocationDisplayName // Also sync the display name
-        } else {
-            // Restore previous end location
-            endLocation = savedEndLocation
-            endLocationDisplayName = "" // Clear display name so user can re-enter
+    private func extractBusinessName(_ address: String) -> String {
+        if address.contains(",") {
+            let firstPart = address.components(separatedBy: ",").first ?? ""
+            return firstPart.trimmingCharacters(in: .whitespaces)
         }
+        return address
     }
     
-    // MARK: - Computed Properties
-    private var canOptimizeRoute: Bool {
-        !startLocation.isEmpty &&
-        !endLocation.isEmpty &&
-        stops.contains { !$0.isEmpty } // This checks the actual addresses for API calls
+    private func loadSavedRoute(_ routeData: RouteData) {
+        print("🔄 Loading saved route into input fields...")
+        
+        // Clear existing data first
+        clearAllFields()
+        
+        // Load basic route information
+        startLocation = routeData.startLocation
+        endLocation = routeData.endLocation
+        considerTraffic = routeData.considerTraffic
+        
+        // Load display names from optimized stops if available
+        if !routeData.optimizedStops.isEmpty {
+            let startStop = routeData.optimizedStops.first!
+            let endStop = routeData.optimizedStops.last!
+            
+            startLocationDisplayName = startStop.name
+            endLocationDisplayName = endStop.name
+            
+            // Load intermediate stops (exclude start and end)
+            let intermediateStops = Array(routeData.optimizedStops.dropFirst().dropLast())
+            
+            if !intermediateStops.isEmpty {
+                stops = intermediateStops.map { $0.address }
+                stopDisplayNames = intermediateStops.map { $0.name }
+            }
+        } else {
+            // Fallback: extract from addresses
+            startLocationDisplayName = extractBusinessName(routeData.startLocation)
+            endLocationDisplayName = extractBusinessName(routeData.endLocation)
+            
+            if !routeData.stops.isEmpty {
+                stops = routeData.stops
+                stopDisplayNames = routeData.stops.map { extractBusinessName($0) }
+            }
+        }
+        
+        print("✅ Route loaded successfully:")
+        print("   Start: '\(startLocationDisplayName)' (\(startLocation))")
+        print("   End: '\(endLocationDisplayName)' (\(endLocation))")
+        print("   Stops: \(stops.count)")
     }
     
-    private func createRouteData() -> RouteData {
-        // Create RouteData with full addresses for API calls
+    private func clearAllFields() {
+        startLocation = ""
+        endLocation = ""
+        savedEndLocation = ""
+        startLocationDisplayName = ""
+        endLocationDisplayName = ""
+        stops = [""]
+        stopDisplayNames = [""]
+        isRoundTrip = false
+        considerTraffic = true
+    }
+    
+    private func handleOptimizeButtonTap() {
+        hapticManager.buttonTap()
+        
+        // Check usage limits first (unless admin)
+        if !UserDefaults.standard.bool(forKey: "driveless_admin_mode") {
+            if usageTracker.todayUsage >= UsageTrackingManager.DAILY_LIMIT {
+                showingUsageLimitAlert = true
+                return
+            }
+        }
+        
+        guard canOptimizeRoute else {
+            print("❌ Cannot optimize route - missing required fields")
+            return
+        }
+        
+        print("🗺️ Starting route optimization...")
+        print("   Start: \(startLocation) (Display: '\(startLocationDisplayName)')")
+        print("   End: \(endLocation) (Display: '\(endLocationDisplayName)')")
+        print("   Stops: \(stops.filter { !$0.isEmpty })")
+        print("   Stop Display Names: \(stopDisplayNames)")
+        print("   Round Trip: \(isRoundTrip)")
+        print("   Consider Traffic: \(considerTraffic)")
+        
+        // Create RouteData with business names properly populated
         var routeData = RouteData(
             startLocation: startLocation,
             endLocation: endLocation,
             stops: stops.filter { !$0.isEmpty },
             isRoundTrip: isRoundTrip,
-            considerTraffic: considerTraffic
+            considerTraffic: considerTraffic,
+            totalDistance: "",
+            estimatedTime: "",
+            optimizedStops: []
         )
         
-        // Pre-populate optimizedStops with business names for better display
-        // This preserves the business names the user selected before API processing
+        // Create optimized stops with business names for proper display
         var preOptimizedStops: [RouteStop] = []
         
         // Add start location with business name
         preOptimizedStops.append(RouteStop(
             address: startLocation,
-            name: startLocationDisplayName.isEmpty ? "" : startLocationDisplayName, // Use business name
-            originalInput: startLocationDisplayName.isEmpty ? startLocation : startLocationDisplayName,
+            name: startLocationDisplayName.isEmpty ? extractBusinessName(startLocation) : startLocationDisplayName,
+            originalInput: startLocationDisplayName,
             type: .start,
             distance: nil,
             duration: nil
@@ -1120,8 +920,8 @@ struct RouteInputView: View {
             let displayName = index < stopDisplayNames.count ? stopDisplayNames[index] : ""
             preOptimizedStops.append(RouteStop(
                 address: stop,
-                name: displayName.isEmpty ? "" : displayName, // Use business name
-                originalInput: displayName.isEmpty ? stop : displayName,
+                name: displayName.isEmpty ? extractBusinessName(stop) : displayName,
+                originalInput: displayName,
                 type: .stop,
                 distance: nil,
                 duration: nil
@@ -1131,185 +931,57 @@ struct RouteInputView: View {
         // Add end location with business name
         preOptimizedStops.append(RouteStop(
             address: endLocation,
-            name: endLocationDisplayName.isEmpty ? "" : endLocationDisplayName, // Use business name
-            originalInput: endLocationDisplayName.isEmpty ? endLocation : endLocationDisplayName,
+            name: endLocationDisplayName.isEmpty ? extractBusinessName(endLocation) : endLocationDisplayName,
+            originalInput: endLocationDisplayName,
             type: .end,
             distance: nil,
             duration: nil
         ))
         
-        // Store the pre-optimized stops with business names
+        // Set the optimized stops with business names
         routeData.optimizedStops = preOptimizedStops
-
-        // ADD THIS DEBUG LOGGING:
-        print("🔍 DEBUG: RouteInputView creating RouteData:")
-        print("🔍   Start: '\(startLocation)' (display: '\(startLocationDisplayName)')")
-        print("🔍   End: '\(endLocation)' (display: '\(endLocationDisplayName)')")
-        for (index, stop) in stops.enumerated() {
-            let displayName = index < stopDisplayNames.count ? stopDisplayNames[index] : ""
-            print("🔍   Stop \(index): '\(stop)' (display: '\(displayName)')")
-        }
-        print("🔍 PreOptimizedStops:")
+        
+        print("✅ Created RouteData with business names:")
         for (index, stop) in preOptimizedStops.enumerated() {
-            print("🔍   Stop \(index): name='\(stop.name)', address='\(stop.address)', originalInput='\(stop.originalInput)'")
-        }
-
-        return routeData
-    }
-    /// Populates the form with data from a saved route
-    /// - Parameter routeData: The route data to load into the form
-
-    // MARK: - Enhanced Route Loading Fix
-    // Replace the existing loadSavedRoute function in RouteInputView.swift
-
-    /// Populates the form with data from a saved route
-    /// - Parameter routeData: The route data to load into the form
-    private func loadSavedRoute(_ routeData: RouteData) {
-        print("📝 Loading saved route into form...")
-        print("🔍 DEBUG: RouteData received:")
-        print("🔍   Start: '\(routeData.startLocation)'")
-        print("🔍   End: '\(routeData.endLocation)'")
-        print("🔍   Stops: \(routeData.stops)")
-        print("🔍   OptimizedStops count: \(routeData.optimizedStops.count)")
-        
-        // Add haptic feedback
-        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
-        impactFeedback.impactOccurred()
-        
-        // ENHANCED: Use display names from optimizedStops if available
-        if !routeData.optimizedStops.isEmpty {
-            let startStop = routeData.optimizedStops.first!
-            let endStop = routeData.optimizedStops.last!
-            
-            print("🔍 DEBUG: Loading from optimizedStops:")
-            print("🔍   Start Stop: address='\(startStop.address)', name='\(startStop.name)', type=\(startStop.type)")
-            print("🔍   End Stop: address='\(endStop.address)', name='\(endStop.name)', type=\(endStop.type)")
-            
-            // Load start location with saved display name
-            startLocation = startStop.address
-            startLocationDisplayName = startStop.name.isEmpty ?
-                extractBusinessName(startStop.address) : startStop.name
-            
-            // Load end location with saved display name - ENHANCED ERROR CHECKING
-            endLocation = endStop.address
-            endLocationDisplayName = endStop.name.isEmpty ?
-                extractBusinessName(endStop.address) : endStop.name
-            
-            // DEFENSIVE: Double-check that endLocation was set correctly
-            if endLocation.isEmpty {
-                print("⚠️ WARNING: endLocation is empty after loading from optimizedStops!")
-                print("🔧 FALLBACK: Using routeData.endLocation instead")
-                endLocation = routeData.endLocation
-                endLocationDisplayName = extractBusinessName(routeData.endLocation)
-            }
-            
-            // Load intermediate stops (excluding start and end)
-            let intermediateStops = Array(routeData.optimizedStops.dropFirst().dropLast())
-            stops = intermediateStops.isEmpty ? [""] : intermediateStops.map { $0.address }
-            stopDisplayNames = intermediateStops.isEmpty ? [""] : intermediateStops.map { $0.name.isEmpty ? extractBusinessName($0.address) : $0.name }
-            
-            print("✅ Loaded from optimizedStops: '\(startLocationDisplayName)' → '\(endLocationDisplayName)'")
-            print("🔍 FINAL CHECK: endLocation = '\(endLocation)'")
-            
-        } else {
-            print("⚠️ WARNING: optimizedStops is empty, using fallback method")
-            
-            // Fallback if no optimized stops saved
-            startLocation = routeData.startLocation
-            endLocation = routeData.endLocation
-            startLocationDisplayName = extractBusinessName(routeData.startLocation)
-            endLocationDisplayName = extractBusinessName(routeData.endLocation)
-            
-            // DEFENSIVE: Ensure endLocation is not empty
-            if endLocation.isEmpty {
-                print("❌ ERROR: endLocation is empty in fallback mode!")
-                print("🔍 RouteData.endLocation = '\(routeData.endLocation)'")
-            }
-            
-            // Load stops
-            stops = routeData.stops.isEmpty ? [""] : routeData.stops
-            stopDisplayNames = routeData.stops.isEmpty ? [""] : routeData.stops.map { extractBusinessName($0) }
-            
-            print("✅ Loaded with extracted names: '\(startLocationDisplayName)' → '\(endLocationDisplayName)'")
-            print("🔍 FINAL CHECK: endLocation = '\(endLocation)'")
+            print("   Stop \(index): '\(stop.name)' at '\(stop.address)'")
         }
         
-        // Ensure we have at least one stop input
-        if stops.isEmpty {
-            stops = [""]
-            stopDisplayNames = [""]
+        // Increment usage tracking (unless admin)
+        if !UserDefaults.standard.bool(forKey: "driveless_admin_mode") {
+            usageTracker.incrementUsage()
+            print("📊 Usage incremented to \(usageTracker.todayUsage)")
         }
         
-        // Load preferences
-        considerTraffic = routeData.considerTraffic
-        isRoundTrip = routeData.isRoundTrip
+        // Navigate to results
+        routeDataForNavigation = routeData
+        shouldNavigateToResults = true
         
-        // DEFENSIVE: Final verification that all required fields are populated
-        print("🔍 FINAL VERIFICATION:")
-        print("🔍   startLocation: '\(startLocation)' (display: '\(startLocationDisplayName)')")
-        print("🔍   endLocation: '\(endLocation)' (display: '\(endLocationDisplayName)')")
-        print("🔍   stops: \(stops)")
-        print("🔍   stopDisplayNames: \(stopDisplayNames)")
-        
-        // Force UI update to ensure fields are populated
-        DispatchQueue.main.async {
-            // SwiftUI will automatically update when @State variables change
-            print("🔄 UI will refresh automatically with @State changes")
-        }
-    }
-    
-    /// Load user's default settings when view appears
-    private func loadDefaultSettings() {
-        // Only load defaults if this is a fresh view (not loading from history)
-        guard startLocation.isEmpty && endLocation.isEmpty && stops.allSatisfy({ $0.isEmpty }) else {
-            print("🔧 Skipping default settings - route already loaded")
-            return
-        }
-        
-        // Load user's preferences from Settings
-        isRoundTrip = settingsManager.defaultRoundTrip
-        considerTraffic = settingsManager.defaultTrafficEnabled
-        
-        print("🔧 Loaded default settings - Round Trip: \(isRoundTrip), Traffic: \(considerTraffic), Units: \(settingsManager.distanceUnit.displayName)")
-    }
-
-    /// Extracts business name from full address for display
-    /// - Parameter address: Full address string
-    /// - Returns: Business name or first part of address
-    private func extractBusinessName(_ address: String) -> String {
-        if address.contains(",") {
-            let firstPart = address.components(separatedBy: ",").first ?? ""
-            return firstPart.trimmingCharacters(in: .whitespaces)
-        }
-        return address
+        print("✅ Navigating to RouteResultsView...")
     }
 }
+
 // MARK: - Saved Address Chip Component
 struct SavedAddressChip: View {
     let address: SavedAddress
     let onTap: () -> Void
     
-    private let primaryGreen = Color(red: 0.2, green: 0.4, blue: 0.2)
-    
     var body: some View {
         Button(action: onTap) {
-            // Just the icon - no text for cleaner look
             Image(systemName: iconForAddressType)
                 .font(.system(size: 16, weight: .medium))
-                .foregroundColor(primaryGreen)
+                .foregroundColor(Color(red: 0.2, green: 0.4, blue: 0.2))
                 .frame(width: 32, height: 32)
                 .background(
                     Circle()
-                        .fill(primaryGreen.opacity(0.1))
+                        .fill(Color(red: 0.2, green: 0.4, blue: 0.2).opacity(0.1))
                         .overlay(
                             Circle()
-                                .stroke(primaryGreen.opacity(0.3), lineWidth: 1)
+                                .stroke(Color(red: 0.2, green: 0.4, blue: 0.2).opacity(0.3), lineWidth: 1)
                         )
                 )
         }
         .buttonStyle(PlainButtonStyle())
     }
-    
     
     // Helper to get icon based on address type
     private var iconForAddressType: String {
@@ -1324,7 +996,8 @@ struct SavedAddressChip: View {
 }
 
 #Preview {
-    RouteInputView(locationManager: LocationManager(),
-    routeLoader: RouteLoader()
-)
+    RouteInputView(
+        locationManager: LocationManager(),
+        routeLoader: RouteLoader()
+    )
 }
