@@ -61,7 +61,6 @@ struct ProfileView: View {
         .sheet(isPresented: $showingRouteHistory) {
             RouteHistoryView(
                 routeHistoryManager: routeHistoryManager,
-                savedRoutes: savedRoutes,
                 onRouteSelected: { routeData in
                     // Use RouteLoader to navigate to Search tab with this route
                     routeLoader.loadRoute(routeData)

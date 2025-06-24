@@ -261,7 +261,27 @@ class RouteHistoryManager: ObservableObject {
         // Save the context
         coreDataManager.save()
         
+        // FORCE CONTEXT REFRESH
+        context.refresh(savedRoute, mergeChanges: true)
+        
         print("💔 Removed favorite status for route: \(savedRoute.routeName ?? "Unnamed")")
+    }
+    
+    /// Adds favorite status directly to a SavedRoute object
+    /// - Parameter savedRoute: The SavedRoute to favorite
+    func addFavoriteByRoute(_ savedRoute: SavedRoute) {
+        let context = coreDataManager.viewContext
+        
+        // Directly set the isFavorite flag to true on the existing object
+        savedRoute.isFavorite = true
+        
+        // Save the context
+        coreDataManager.save()
+        
+        // FORCE CONTEXT REFRESH
+        context.refresh(savedRoute, mergeChanges: true)
+        
+        print("❤️ Added favorite status for route: \(savedRoute.routeName ?? "Unnamed")")
     }
 
     /// Fetches all favorite routes

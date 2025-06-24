@@ -2,14 +2,6 @@
 //  RouteHistoryView.swift
 //  DriveLess
 //
-//  Created by Paul Soni on 6/20/25.
-//
-
-
-//
-//  RouteHistoryView.swift
-//  DriveLess
-//
 //  Displays saved route history with ability to reload routes
 //
 
@@ -20,7 +12,10 @@ struct RouteHistoryView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var routeHistoryManager: RouteHistoryManager
     
-    let savedRoutes: [SavedRoute]
+    // FIXED: Make this @State instead of let to allow updates
+    @State private var savedRoutes: [SavedRoute] = []
+    @State private var refreshCounter = 0  // NEW: Force refresh trigger
+    
     let onRouteSelected: (RouteData) -> Void  // Callback when user selects a route
     
     // MARK: - Color Theme (Earthy - matching app theme)
@@ -32,7 +27,7 @@ struct RouteHistoryView: View {
         NavigationView {
             VStack(spacing: 0) {
                 
-                // MARK: - Header Stats
+                // MARK: - Header Stats (Updated to use state)
                 if !savedRoutes.isEmpty {
                     headerStatsView
                         .padding(.horizontal, 20)
@@ -57,11 +52,14 @@ struct RouteHistoryView: View {
                 }
             }
         }
+        .onAppear {
+            loadRouteHistory()
+        }
     }
     
-    // MARK: - Header Stats
+    // MARK: - Header Stats (Now uses dynamic state)
     private var headerStatsView: some View {
-        HStack(spacing: 20) {
+        HStack {
             VStack {
                 Text("\(savedRoutes.count)")
                     .font(.title2)
@@ -80,7 +78,7 @@ struct RouteHistoryView: View {
                     .font(.title2)
                     .fontWeight(.bold)
                     .foregroundColor(primaryGreen)
-                Text("Miles Saved")
+                Text("Miles Optimized")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -103,7 +101,7 @@ struct RouteHistoryView: View {
             RoundedRectangle(cornerRadius: 12)
                 .fill(Color(.systemGray6))
         )
-        .padding(.bottom, 10)
+        .padding(.horizontal, 16)
     }
     
     // MARK: - Route List
@@ -117,6 +115,9 @@ struct RouteHistoryView: View {
                         let routeData = routeHistoryManager.convertToRouteData(route)
                         onRouteSelected(routeData)
                         dismiss()
+                    },
+                    onFavoriteToggle: {
+                        toggleFavorite(route)
                     }
                 )
                 .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
@@ -124,6 +125,7 @@ struct RouteHistoryView: View {
             .onDelete(perform: deleteRoutes)
         }
         .listStyle(PlainListStyle())
+        .id(refreshCounter)  // NEW: Force refresh when counter changes
     }
     
     // MARK: - Empty State
@@ -152,13 +154,51 @@ struct RouteHistoryView: View {
     
     // MARK: - Helper Methods
     
+    // FIXED: Proper route deletion with immediate UI update
     private func deleteRoutes(offsets: IndexSet) {
+        print("🗑️ Deleting \(offsets.count) route(s)")
+        
+        // Delete from Core Data first
         for index in offsets {
-            routeHistoryManager.deleteRoute(savedRoutes[index])
+            let routeToDelete = savedRoutes[index]
+            print("🗑️ Deleting route: \(routeToDelete.routeName ?? "Unnamed")")
+            routeHistoryManager.deleteRoute(routeToDelete)
         }
+        
+        // IMMEDIATELY update the UI state
+        savedRoutes.remove(atOffsets: offsets)
+        
+        print("✅ Routes deleted and UI updated. Remaining: \(savedRoutes.count)")
     }
     
-    // MARK: - Computed Properties
+    // NEW: Function to refresh data from Core Data
+    private func loadRouteHistory() {
+        savedRoutes = routeHistoryManager.loadRouteHistory()
+        print("🔄 Loaded \(savedRoutes.count) routes from history")
+    }
+    
+    // NEW: Toggle favorite status for a route
+    private func toggleFavorite(_ route: SavedRoute) {
+        // Store current state before changing
+        let wasAlreadyFavorited = route.isFavorite
+        
+        // Persist to Core Data first
+        if wasAlreadyFavorited {
+            print("💔 Unfavoriting route from history: \(route.routeName ?? "Unnamed")")
+            routeHistoryManager.removeFavoriteByRoute(route)
+        } else {
+            print("❤️ Favoriting route from history: \(route.routeName ?? "Unnamed")")
+            routeHistoryManager.addFavoriteByRoute(route)
+        }
+        
+        // FIXED: Force immediate UI update by reloading data and incrementing refresh counter
+        loadRouteHistory()
+        refreshCounter += 1  // This forces SwiftUI to completely refresh the list
+        
+        print("✅ Route favorite status toggled and UI updated immediately (refresh #\(refreshCounter))")
+    }
+    
+    // MARK: - Computed Properties (Now use state instead of parameter)
     
     private var totalDistanceSaved: String {
         let totalMiles = savedRoutes.compactMap { route in
@@ -181,30 +221,31 @@ struct RouteHistoryView: View {
 struct RouteHistoryRow: View {
     let route: SavedRoute
     let onTap: () -> Void
+    let onFavoriteToggle: () -> Void  // NEW: Callback for favorite toggle
     
     private let primaryGreen = Color(red: 0.2, green: 0.4, blue: 0.2)
     
     var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: 12) {
-                
-                // Route Icon
-                Circle()
-                    .fill(primaryGreen.opacity(0.2))
-                    .frame(width: 50, height: 50)
-                    .overlay(
-                        Image(systemName: "map.fill")
-                            .font(.system(size: 20, weight: .medium))
-                            .foregroundColor(primaryGreen)
-                    )
-                
-                // Route Details
+        HStack(spacing: 12) {
+            // Route Icon
+            Circle()
+                .fill(primaryGreen.opacity(0.2))
+                .frame(width: 50, height: 50)
+                .overlay(
+                    Image(systemName: "map.fill")
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundColor(primaryGreen)
+                )
+            
+            // Route Details - tappable area for loading route
+            Button(action: onTap) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(route.routeName ?? "Unnamed Route")
                         .font(.headline)
                         .fontWeight(.semibold)
                         .foregroundColor(.primary)
                         .lineLimit(1)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     
                     HStack(spacing: 16) {
                         HStack(spacing: 4) {
@@ -224,25 +265,30 @@ struct RouteHistoryRow: View {
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
+                        
+                        Spacer()
                     }
                     
                     if let createdDate = route.createdDate {
                         Text(formatDate(createdDate))
                             .font(.caption2)
                             .foregroundColor(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
-                
-                Spacer()
-                
-                // Chevron
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.secondary)
             }
-            .padding(.vertical, 8)
+            .buttonStyle(PlainButtonStyle())
+            
+            // UPDATED: Heart icon for favorite toggle instead of chevron
+            Button(action: onFavoriteToggle) {
+                Image(systemName: route.isFavorite ? "heart.fill" : "heart")
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundColor(route.isFavorite ? .red : .gray)
+                    .padding(8)
+            }
+            .buttonStyle(PlainButtonStyle())
         }
-        .buttonStyle(PlainButtonStyle())
+        .padding(.vertical, 8)
     }
     
     private func formatDate(_ date: Date) -> String {
@@ -256,7 +302,6 @@ struct RouteHistoryRow: View {
 #Preview {
     RouteHistoryView(
         routeHistoryManager: RouteHistoryManager(),
-        savedRoutes: [],
         onRouteSelected: { _ in }
     )
 }
