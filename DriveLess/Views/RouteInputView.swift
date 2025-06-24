@@ -1131,8 +1131,11 @@ struct RouteInputView: View {
     }
     /// Populates the form with data from a saved route
     /// - Parameter routeData: The route data to load into the form
+    /// Populates the form with data from a saved route
+    /// - Parameter routeData: The route data to load into the form
     private func loadSavedRoute(_ routeData: RouteData) {
         print("📝 Loading saved route into form...")
+        print("📝 Route data: \(routeData.startLocation) → \(routeData.endLocation)")
         
         // Add haptic feedback
         let impactFeedback = UIImpactFeedbackGenerator(style: .light)
@@ -1143,43 +1146,52 @@ struct RouteInputView: View {
             let startStop = routeData.optimizedStops.first!
             let endStop = routeData.optimizedStops.last!
             
+            print("📝 Loading from optimized stops:")
+            print("📝 Start: \(startStop.address) (\(startStop.name))")
+            print("📝 End: \(endStop.address) (\(endStop.name))")
+            
             // Load start location with saved display name
             startLocation = startStop.address
             startLocationDisplayName = startStop.name.isEmpty ? extractBusinessName(startStop.address) : startStop.name
             
-            // Load end location with saved display name
+            // Load end location with saved display name - FIXED
             endLocation = endStop.address
             endLocationDisplayName = endStop.name.isEmpty ? extractBusinessName(endStop.address) : endStop.name
+            
+            // Force UI update for end location
+            DispatchQueue.main.async {
+                // Trigger a manual refresh of the end location display
+                self.endLocationDisplayName = endStop.name.isEmpty ? self.extractBusinessName(endStop.address) : endStop.name
+                print("📝 Set end location display name to: '\(self.endLocationDisplayName)'")
+            }
             
             // Load stops with saved display names
             let stopRoutes = Array(routeData.optimizedStops.dropFirst().dropLast()) // Remove start and end
             stops = stopRoutes.isEmpty ? [""] : stopRoutes.map { $0.address }
             stopDisplayNames = stopRoutes.isEmpty ? [""] : stopRoutes.map { $0.name.isEmpty ? extractBusinessName($0.address) : $0.name }
             
-            print("✅ Loaded with saved display names: '\(startLocationDisplayName)' → '\(endLocationDisplayName)'")
         } else {
-            // Fallback to original logic
+            // Fallback to basic addresses
             startLocation = routeData.startLocation
-            startLocationDisplayName = extractBusinessName(routeData.startLocation)
-            
             endLocation = routeData.endLocation
-            endLocationDisplayName = extractBusinessName(routeData.endLocation)
-            
             stops = routeData.stops.isEmpty ? [""] : routeData.stops
-            stopDisplayNames = routeData.stops.isEmpty ? [""] : routeData.stops.map { extractBusinessName($0) }
             
-            print("✅ Loaded with extracted names: '\(startLocationDisplayName)' → '\(endLocationDisplayName)'")
+            // Extract business names for display
+            startLocationDisplayName = extractBusinessName(routeData.startLocation)
+            endLocationDisplayName = extractBusinessName(routeData.endLocation)
+            stopDisplayNames = stops.map { extractBusinessName($0) }
+            
+            print("📝 Fallback mode - End location display name: '\(endLocationDisplayName)'")
         }
         
-        // Ensure we have at least one stop input
-        if stops.isEmpty {
-            stops = [""]
-            stopDisplayNames = [""]
-        }
-        
-        // Load preferences
+        // Load other settings
+        isRoundTrip = false // Routes are never round trip when loaded
         considerTraffic = routeData.considerTraffic
-        isRoundTrip = routeData.isRoundTrip
+        
+        print("✅ Route loaded successfully")
+        print("✅ Start: '\(startLocationDisplayName)' (\(startLocation))")
+        print("✅ End: '\(endLocationDisplayName)' (\(endLocation))")
+        print("✅ Stops: \(stopDisplayNames)")
     }
     
     /// Load user's default settings when view appears

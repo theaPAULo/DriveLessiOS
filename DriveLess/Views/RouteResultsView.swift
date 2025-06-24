@@ -338,7 +338,7 @@ struct RouteResultsView: View {
     
     private var actionButtonsView: some View {
         VStack(spacing: 12) {
-            // Top row: Star button and navigation buttons
+            // Top row: Star button and Google Maps button
             HStack(spacing: 12) {
                 // Star/Heart button to save as favorite
                 Button(action: toggleFavorite) {
@@ -360,10 +360,11 @@ struct RouteResultsView: View {
                     )
                 }
                 
+                // Google Maps button (now takes full width alongside save button)
                 Button(action: openGoogleMaps) {
                     HStack {
                         Image(systemName: "map")
-                        Text("Google Maps")
+                        Text("Open in Google Maps")
                     }
                     .frame(maxWidth: .infinity)
                     .padding()
@@ -371,19 +372,6 @@ struct RouteResultsView: View {
                     .foregroundColor(.blue)
                     .cornerRadius(12)
                 }
-            }
-            
-            // Bottom row: Apple Maps button
-            Button(action: openAppleMaps) {
-                HStack {
-                    Image(systemName: "map.fill")
-                    Text("Apple Maps")
-                }
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color.green.opacity(0.1))
-                .foregroundColor(.green)
-                .cornerRadius(12)
             }
         }
         .alert("Name Your Route", isPresented: $showingNameRouteAlert) {

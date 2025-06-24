@@ -40,11 +40,14 @@ struct GoogleMapsView: UIViewRepresentable {
         mapView.settings.rotateGestures = true
         mapView.settings.tiltGestures = false
         
+        // CRITICAL: Enable info windows explicitly
+        mapView.settings.consumesGesturesInView = false
+        
         // Enable buildings and indoor maps
         mapView.isBuildingsEnabled = true
         mapView.isIndoorEnabled = true
         
-        // Set delegate
+        // Set delegate BEFORE setting up markers
         mapView.delegate = context.coordinator
         
         print("✅ Google Maps view created successfully")
@@ -156,11 +159,41 @@ struct GoogleMapsView: UIViewRepresentable {
             let marker = GMSMarker()
             marker.position = coordinates[index]
             marker.icon = createMarkerIcon(number: index + 1, type: waypoint.type)
-            marker.title = waypoint.name.isEmpty ? waypoint.address.components(separatedBy: ",").first : waypoint.name
-            marker.snippet = waypoint.address
+            
+            // DEBUG: Log waypoint data
+            print("📍 DEBUG: Waypoint \(index + 1):")
+            print("   - Address: '\(waypoint.address)'")
+            print("   - Name: '\(waypoint.name)'")
+            print("   - Original Input: '\(waypoint.originalInput)'")
+            print("   - Type: \(waypoint.type)")
+            
+            // FIXED: Use originalInput (business name) as title if available and different from address
+            let businessName = waypoint.originalInput
+            let addressName = waypoint.address.components(separatedBy: ",").first?.trimmingCharacters(in: .whitespaces) ?? waypoint.address
+            
+            if !businessName.isEmpty && businessName != waypoint.address && businessName != addressName {
+                // We have a real business name
+                marker.title = businessName
+                marker.snippet = waypoint.address
+                print("   - Using business name as title: '\(businessName)'")
+            } else if !waypoint.name.isEmpty && waypoint.name != waypoint.address && waypoint.name != addressName {
+                // Use name field if it's a business name
+                marker.title = waypoint.name
+                marker.snippet = waypoint.address
+                print("   - Using name field as title: '\(waypoint.name)'")
+            } else {
+                // Fallback to first part of address
+                marker.title = addressName
+                marker.snippet = waypoint.address
+                print("   - Using address as title: '\(addressName)'")
+            }
+            
+            // Enable info window
+            marker.infoWindowAnchor = CGPoint(x: 0.5, y: 0.0)
             marker.map = mapView
             
-            print("📍 Added marker \(index + 1) at: \(coordinates[index].latitude), \(coordinates[index].longitude)")
+            print("📍 Final marker title: '\(marker.title ?? "No title")'")
+            print("📍 Final marker snippet: '\(marker.snippet ?? "No snippet")'")
         }
         
         // Draw route polyline - use real route if available, otherwise straight lines
@@ -437,22 +470,42 @@ struct GoogleMapsView: UIViewRepresentable {
         }
     }
     
-    // MARK: - Traffic Button
+    // MARK: - Enhanced Traffic Button (More Corner Positioned)
     private func addTrafficButton(to mapView: GMSMapView) {
         let button = UIButton(type: .system)
         button.setTitle("Traffic", for: .normal)
         button.setTitleColor(.white, for: .normal)
+        button.titleLabel?.font = UIFont.systemFont(ofSize: 14, weight: .semibold)
+        
+        // Enhanced styling
         button.backgroundColor = UIColor.black.withAlphaComponent(0.7)
-        button.layer.cornerRadius = 8
-        button.frame = CGRect(x: mapView.frame.width - 80, y: 60, width: 60, height: 30)
+        button.layer.cornerRadius = 20
+        button.layer.shadowColor = UIColor.black.cgColor
+        button.layer.shadowOffset = CGSize(width: 0, height: 2)
+        button.layer.shadowOpacity = 0.3
+        button.layer.shadowRadius = 4
+        
+        // More corner positioning - closer to the edge
+        button.frame = CGRect(x: 0, y: 0, width: 80, height: 40)
+        button.center = CGPoint(x: mapView.frame.width - 50, y: 50) // Higher (50 vs 60) and more left (50 vs 30)
         button.autoresizingMask = [.flexibleLeftMargin, .flexibleBottomMargin]
         
         button.addAction(UIAction { _ in
-            mapView.isTrafficEnabled.toggle()
-            button.backgroundColor = mapView.isTrafficEnabled ?
-                UIColor.systemBlue.withAlphaComponent(0.8) :
-                UIColor.black.withAlphaComponent(0.7)
+            // Smooth toggle with animation
+            UIView.animate(withDuration: 0.2) {
+                mapView.isTrafficEnabled.toggle()
+                button.backgroundColor = mapView.isTrafficEnabled ?
+                    UIColor.systemBlue.withAlphaComponent(0.8) :
+                    UIColor.black.withAlphaComponent(0.7)
                 
+                // Scale animation for feedback
+                button.transform = CGAffineTransform(scaleX: 0.95, y: 0.95)
+            } completion: { _ in
+                UIView.animate(withDuration: 0.1) {
+                    button.transform = CGAffineTransform.identity
+                }
+            }
+            
             // Haptic feedback
             let impact = UIImpactFeedbackGenerator(style: .medium)
             impact.impactOccurred()
@@ -461,8 +514,7 @@ struct GoogleMapsView: UIViewRepresentable {
         mapView.addSubview(button)
     }
 }
-
-// MARK: - Map Delegate
+// MARK: - Map Delegate (Force Info Windows)
 extension GoogleMapsView {
     class Coordinator: NSObject, GMSMapViewDelegate {
         var parent: GoogleMapsView
@@ -472,14 +524,63 @@ extension GoogleMapsView {
         }
         
         func mapView(_ mapView: GMSMapView, didTap marker: GMSMarker) -> Bool {
-            // Show info window
-            mapView.selectedMarker = marker
+            print("📍 Marker tapped: \(marker.title ?? "No title")")
+            print("📍 Marker snippet: \(marker.snippet ?? "No snippet")")
+            
+            // Force close any existing info window
+            mapView.selectedMarker = nil
+            
+            // Small delay to ensure proper selection
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                // Now select the tapped marker
+                mapView.selectedMarker = marker
+                print("📍 Marker selected: \(marker.title ?? "Unknown")")
+                
+                // Verify selection worked
+                if mapView.selectedMarker == marker {
+                    print("✅ Marker selection confirmed")
+                } else {
+                    print("❌ Marker selection failed")
+                }
+            }
+            
+            // Animate camera to marker for better visibility
+            let markerPosition = marker.position
+            let offsetPosition = CLLocationCoordinate2D(
+                latitude: markerPosition.latitude + 0.001,
+                longitude: markerPosition.longitude
+            )
+            
+            let camera = GMSCameraPosition.camera(
+                withTarget: offsetPosition,
+                zoom: max(14.0, mapView.camera.zoom)
+            )
+            
+            mapView.animate(to: camera)
             
             // Haptic feedback
             let impact = UIImpactFeedbackGenerator(style: .light)
             impact.impactOccurred()
             
-            return true
+            // Return false to allow default behavior
+            return false
+        }
+        
+        func mapView(_ mapView: GMSMapView, didTapInfoWindowOf marker: GMSMarker) {
+            print("📍 Info window tapped for: \(marker.title ?? "Unknown")")
+        }
+        
+        // Add this delegate method to check if info windows are being created
+        func mapView(_ mapView: GMSMapView, markerInfoWindow marker: GMSMarker) -> UIView? {
+            print("📍 Info window requested for: \(marker.title ?? "Unknown")")
+            // Return nil to use default info window
+            return nil
+        }
+        
+        func mapView(_ mapView: GMSMapView, markerInfoContents marker: GMSMarker) -> UIView? {
+            print("📍 Info window contents requested for: \(marker.title ?? "Unknown")")
+            // Return nil to use default contents
+            return nil
         }
     }
 }
