@@ -37,35 +37,49 @@ struct SettingsView: View {
     var body: some View {
         NavigationView {
             List {
-                // MARK: - Appearance Section
+                // MARK: - Appearance Section (UPDATED with capsule selector)
                 Section("Appearance") {
-                    HStack {
-                        Image(systemName: "paintbrush.fill")
-                            .foregroundColor(primaryGreen)
-                            .frame(width: 24)
-                        
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Theme")
-                                .font(.system(size: 16, weight: .medium))
-                            Text("Choose your preferred appearance")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Image(systemName: "paintbrush.fill")
+                                .foregroundColor(primaryGreen)
+                                .frame(width: 24)
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Theme")
+                                    .font(.system(size: 16, weight: .medium))
+                                Text("Choose your preferred appearance")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            Spacer()
                         }
                         
-                        Spacer()
-                        
-                        Picker("Theme", selection: $themeManager.currentTheme) {
+                        // CUSTOM CAPSULE SELECTOR FOR THEMES (UPDATED with icons only)
+                        HStack(spacing: 6) {
                             ForEach(ThemePreference.allCases, id: \.self) { theme in
-                                HStack {
+                                Button(action: {
+                                    hapticManager.toggle()
+                                    themeManager.currentTheme = theme
+                                }) {
                                     Image(systemName: theme.icon)
-                                        .font(.system(size: 14))
-                                        .foregroundColor(primaryGreen)
-                                    Text(theme.displayName)
+                                        .font(.system(size: 16, weight: .medium))
+                                        .foregroundColor(themeManager.currentTheme == theme ? .white : primaryGreen)
+                                        .frame(width: 44, height: 44) // Perfect square touch target
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 22) // Half of width/height for perfect circle
+                                                .fill(themeManager.currentTheme == theme ? primaryGreen : Color.clear)
+                                                .overlay(
+                                                    RoundedRectangle(cornerRadius: 22)
+                                                        .stroke(primaryGreen, lineWidth: 1)
+                                                )
+                                        )
                                 }
-                                .tag(theme)
+                                .buttonStyle(PlainButtonStyle())
                             }
                         }
-                        .pickerStyle(MenuPickerStyle())
+                        .padding(.leading, 40) // Align with text above
                     }
                     .padding(.vertical, 4)
                 }
@@ -144,28 +158,53 @@ struct SettingsView: View {
                     }
                     .padding(.vertical, 4)
                     
-                    // Distance Units
-                    HStack {
-                        Image(systemName: "ruler.fill")
-                            .foregroundColor(primaryGreen)
-                            .frame(width: 24)
-                        
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Distance Units")
-                                .font(.system(size: 16, weight: .medium))
-                            Text("Choose your preferred measurement")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                    // Distance Units (UPDATED with capsule selector)
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Image(systemName: "ruler.fill")
+                                .foregroundColor(primaryGreen)
+                                .frame(width: 24)
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Distance Units")
+                                    .font(.system(size: 16, weight: .medium))
+                                Text("Choose your preferred measurement")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            Spacer()
                         }
                         
-                        Spacer()
-                        
-                        Picker("Units", selection: $settingsManager.distanceUnit) {
+                        // CUSTOM CAPSULE SELECTOR FOR DISTANCE UNITS
+                        HStack(spacing: 4) {
                             ForEach(DistanceUnit.allCases, id: \.self) { unit in
-                                Text(unit.displayName).tag(unit)
+                                Button(action: {
+                                    hapticManager.toggle()
+                                    settingsManager.distanceUnit = unit
+                                }) {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: unit == .miles ? "ruler" : "ruler.fill")
+                                            .font(.system(size: 12, weight: .medium))
+                                        Text(unit.displayName)
+                                            .font(.system(size: 13, weight: .medium))
+                                    }
+                                    .foregroundColor(settingsManager.distanceUnit == unit ? .white : primaryGreen)
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 8)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 16)
+                                            .fill(settingsManager.distanceUnit == unit ? primaryGreen : Color.clear)
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 16)
+                                                    .stroke(primaryGreen, lineWidth: 1)
+                                            )
+                                    )
+                                }
+                                .buttonStyle(PlainButtonStyle())
                             }
                         }
-                        .pickerStyle(MenuPickerStyle())
+                        .padding(.leading, 40) // Align with text above
                     }
                     .padding(.vertical, 4)
                 }
@@ -348,6 +387,7 @@ struct SettingsView: View {
             UIApplication.shared.open(settingsUrl)
         }
     }
+
     
     private func rateApp() {
         // TODO: Replace with your actual App Store ID when published
