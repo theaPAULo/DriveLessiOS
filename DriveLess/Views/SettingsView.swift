@@ -120,9 +120,6 @@ struct SettingsView: View {
                         
                         Toggle("", isOn: $settingsManager.defaultRoundTrip)
                             .labelsHidden()
-                            .onChange(of: settingsManager.defaultRoundTrip) { _, newValue in
-                                hapticManager.toggle()
-                            }
                     }
                     .padding(.vertical, 4)
                     
@@ -144,9 +141,6 @@ struct SettingsView: View {
                         
                         Toggle("", isOn: $settingsManager.defaultTrafficEnabled)
                             .labelsHidden()
-                            .onChange(of: settingsManager.defaultTrafficEnabled) { _, newValue in
-                                hapticManager.toggle()
-                            }
                     }
                     .padding(.vertical, 4)
                     
@@ -172,9 +166,6 @@ struct SettingsView: View {
                             }
                         }
                         .pickerStyle(MenuPickerStyle())
-                        .onChange(of: settingsManager.distanceUnit) { _, newValue in
-                            hapticManager.selection()
-                        }
                     }
                     .padding(.vertical, 4)
                 }

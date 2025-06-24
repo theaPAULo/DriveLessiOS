@@ -35,6 +35,8 @@ struct RouteInputView: View {
     @ObservedObject var locationManager: LocationManager
     @ObservedObject var routeLoader: RouteLoader
     @StateObject private var savedAddressManager = SavedAddressManager()
+    @EnvironmentObject var settingsManager: SettingsManager  // ADD THIS LINE
+
 
     // MARK: - Field Type Enum for Address Selection
     private enum AddressFieldType {
@@ -73,6 +75,8 @@ struct RouteInputView: View {
             .background(Color(.systemGroupedBackground))
             .navigationBarBackButtonHidden(true)
             .onAppear {
+                loadDefaultSettings()
+
                 // Check if there's a route to load
                 if let routeToLoad = routeLoader.routeToLoad {
                     loadSavedRoute(routeToLoad)
@@ -1162,6 +1166,21 @@ struct RouteInputView: View {
         considerTraffic = routeData.considerTraffic
         isRoundTrip = routeData.isRoundTrip
     }
+    
+    /// Load user's default settings when view appears
+    private func loadDefaultSettings() {
+        // Only load defaults if this is a fresh view (not loading from history)
+        guard startLocation.isEmpty && endLocation.isEmpty && stops.allSatisfy({ $0.isEmpty }) else {
+            print("🔧 Skipping default settings - route already loaded")
+            return
+        }
+        
+        // Load user's preferences from Settings
+        isRoundTrip = settingsManager.defaultRoundTrip
+        considerTraffic = settingsManager.defaultTrafficEnabled
+        
+        print("🔧 Loaded default settings - Round Trip: \(isRoundTrip), Traffic: \(considerTraffic), Units: \(settingsManager.distanceUnit.displayName)")
+    }
 
     /// Extracts business name from full address for display
     /// - Parameter address: Full address string
@@ -1199,6 +1218,7 @@ struct SavedAddressChip: View {
         }
         .buttonStyle(PlainButtonStyle())
     }
+    
     
     // Helper to get icon based on address type
     private var iconForAddressType: String {
