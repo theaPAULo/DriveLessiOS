@@ -14,6 +14,8 @@ struct RouteResultsView: View {
     @State private var isLoading = true
     @State private var optimizedRoute: RouteData
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var settingsManager: SettingsManager  // ADD THIS LINE
+
     
     // Add these new state variables for real route data
     @State private var routeLegs: [RouteLeg] = []
@@ -106,7 +108,7 @@ struct RouteResultsView: View {
                         Text("Total Distance")
                             .font(.caption)
                             .foregroundColor(.gray)
-                        Text(optimizedRoute.totalDistance)
+                        Text(formatDistanceForDisplay(optimizedRoute.totalDistance))
                             .font(.title2)
                             .fontWeight(.semibold)
                     }
@@ -276,7 +278,7 @@ struct RouteResultsView: View {
                         // Distance and duration info
                         if let distance = stop.distance, let duration = stop.duration {
                             HStack {
-                                Text("📍 \(distance)")
+                                Text("📍 \(formatLegDistance(distance))")
                                 Text("⏱️ \(duration)")
                             }
                             .font(.caption2)
@@ -543,6 +545,51 @@ struct RouteResultsView: View {
     
     private func goBack() {
         print("⬅️ Going back to route input...")
+    }
+    
+    // MARK: - Distance Formatting
+
+    /// Converts distance string from miles to user's preferred unit
+    private func formatDistanceForDisplay(_ distanceString: String) -> String {
+        // Extract the numeric value from strings like "25.0 miles" or "10.5 mi"
+        let cleanString = distanceString.replacingOccurrences(of: " miles", with: "")
+                                       .replacingOccurrences(of: " mi", with: "")
+                                       .trimmingCharacters(in: .whitespaces)
+        
+        guard let milesValue = Double(cleanString) else {
+            // If we can't parse it, return as-is
+            return distanceString
+        }
+        
+        // Convert to user's preferred unit
+        switch settingsManager.distanceUnit {
+        case .miles:
+            return String(format: "%.1f mi", milesValue)
+        case .kilometers:
+            let kilometers = milesValue * 1.60934
+            return String(format: "%.1f km", kilometers)
+        }
+    }
+
+    /// Formats individual leg distances (like "10.5 mi" from route legs)
+    private func formatLegDistance(_ legDistanceText: String) -> String {
+        // Handle Google API distance format (e.g., "10.5 mi", "5.2 km")
+        if legDistanceText.contains("mi") {
+            let cleanValue = legDistanceText.replacingOccurrences(of: " mi", with: "")
+                                           .trimmingCharacters(in: .whitespaces)
+            if let miles = Double(cleanValue) {
+                switch settingsManager.distanceUnit {
+                case .miles:
+                    return String(format: "%.1f mi", miles)
+                case .kilometers:
+                    let kilometers = miles * 1.60934
+                    return String(format: "%.1f km", kilometers)
+                }
+            }
+        }
+        
+        // If already in km or unrecognized format, return as-is for now
+        return legDistanceText
     }
 }
 
