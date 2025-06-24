@@ -427,7 +427,7 @@ struct RouteInputView: View {
                     text: $endLocationDisplayName, // Display the business name
                     placeholder: isRoundTrip ? "Return to start" : "Destination",
                     icon: "flag.checkered",
-                    iconColor: accentBrown,
+                    iconColor: primaryGreen,
                     currentLocation: locationManager.location,
                     onPlaceSelected: { place in
                         handleEndLocationSelected(place)
@@ -446,7 +446,7 @@ struct RouteInputView: View {
                             Text("Use current location")
                                 .font(.system(size: 14, weight: .medium))
                         }
-                        .foregroundColor(accentBrown)
+                        .foregroundColor(primaryGreen)
                     }
                     .padding(.leading, 4)
                 }
@@ -500,7 +500,7 @@ struct RouteInputView: View {
                                 text: $stopDisplayNames[index], // Display the business name
                                 placeholder: "Add stop",
                                 icon: "mappin.circle.fill",
-                                iconColor: Color(.systemBlue),
+                                iconColor: accentBrown,  // Changed from Color(.systemBlue) to match earthy theme
                                 currentLocation: locationManager.location,
                                 onPlaceSelected: { place in
                                     handleStopLocationSelected(place, at: index)
@@ -525,7 +525,7 @@ struct RouteInputView: View {
                                 Text("Use current location")
                                     .font(.system(size: 14, weight: .medium))
                             }
-                            .foregroundColor(Color(.systemBlue))
+                            .foregroundColor(accentBrown)
                         }
                         .padding(.leading, 4)
                         .frame(maxWidth: .infinity, alignment: .leading)

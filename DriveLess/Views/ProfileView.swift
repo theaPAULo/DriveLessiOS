@@ -181,17 +181,17 @@ struct ProfileView: View {
                     icon: "map.fill",
                     title: "Routes",
                     value: "\(savedRoutes.count)",
-                    subtitle: "Optimized"
+                    subtitle: "Created"  // Changed from "Optimized" to shorter text
                 )
-                
+
                 Divider()
                     .frame(height: 40)
-                
+
                 statItem(
                     icon: "clock.fill",
                     title: timeAgo(savedRoutes.first?.createdDate),
                     value: "Recent",
-                    subtitle: "Last route"
+                    subtitle: "Route"  // Changed from "Last route" to just "Route"
                 )
                 
                 Divider()
