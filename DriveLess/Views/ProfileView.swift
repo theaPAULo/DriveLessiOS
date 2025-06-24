@@ -138,12 +138,20 @@ struct ProfileView: View {
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                     
-                    // Show sign-in provider (Google only for now)
-                    HStack {
-                        Image(systemName: "globe")
-                            .font(.system(size: 12))
-                        Text("Signed in with Google")
-                            .font(.caption)
+                    // Show sign-in provider - FIXED to show correct provider
+                    HStack(spacing: 4) {
+                        switch user.provider {
+                        case .apple:
+                            Image(systemName: "applelogo")
+                                .font(.system(size: 12, weight: .medium))
+                            Text("Signed in with Apple")
+                                .font(.caption)
+                        case .google:
+                            Image(systemName: "globe")
+                                .font(.system(size: 12))
+                            Text("Signed in with Google")
+                                .font(.caption)
+                        }
                     }
                     .foregroundColor(.secondary)
                 } else {
