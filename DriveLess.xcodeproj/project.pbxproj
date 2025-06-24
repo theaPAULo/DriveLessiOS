@@ -10,6 +10,7 @@
 		E41D3DCE2E05B5FD009E2287 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = E41D3DCD2E05B5FD009E2287 /* FirebaseAuth */; };
 		E41D3DD02E05B5FD009E2287 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = E41D3DCF2E05B5FD009E2287 /* FirebaseFirestore */; };
 		E41D3DD32E05B616009E2287 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = E41D3DD22E05B616009E2287 /* GoogleSignIn */; };
+		E45E2C742E0AFAE700A9E77F /* MessageUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E45E2C732E0AFAE700A9E77F /* MessageUI.framework */; };
 		E45EA6DD2E04718100C89EBE /* GooglePlaces in Frameworks */ = {isa = PBXBuildFile; productRef = E45EA6DC2E04718100C89EBE /* GooglePlaces */; };
 		E45EA6E02E04718E00C89EBE /* GoogleMaps in Frameworks */ = {isa = PBXBuildFile; productRef = E45EA6DF2E04718E00C89EBE /* GoogleMaps */; };
 		E46E2CFF2E0A519D00203AF0 /* SavedRoute+CoreDataProperties.swift in Sources */ = {isa = PBXBuildFile; fileRef = E46E2CFE2E0A519D00203AF0 /* SavedRoute+CoreDataProperties.swift */; };
@@ -39,6 +40,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		E45E2C732E0AFAE700A9E77F /* MessageUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MessageUI.framework; path = System/Library/Frameworks/MessageUI.framework; sourceTree = SDKROOT; };
 		E46E2CFD2E0A519D00203AF0 /* SavedRoute+CoreDataClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SavedRoute+CoreDataClass.swift"; sourceTree = "<group>"; };
 		E46E2CFE2E0A519D00203AF0 /* SavedRoute+CoreDataProperties.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SavedRoute+CoreDataProperties.swift"; sourceTree = "<group>"; };
 		E49106D22E05CBAE00F1E96F /* AuthenticationServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AuthenticationServices.framework; path = System/Library/Frameworks/AuthenticationServices.framework; sourceTree = SDKROOT; };
@@ -87,6 +89,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E45E2C742E0AFAE700A9E77F /* MessageUI.framework in Frameworks */,
 				E49106D32E05CBAE00F1E96F /* AuthenticationServices.framework in Frameworks */,
 				E41D3DD32E05B616009E2287 /* GoogleSignIn in Frameworks */,
 				E45EA6E02E04718E00C89EBE /* GoogleMaps in Frameworks */,
@@ -116,6 +119,7 @@
 		E49106D12E05CBAE00F1E96F /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				E45E2C732E0AFAE700A9E77F /* MessageUI.framework */,
 				E49106D22E05CBAE00F1E96F /* AuthenticationServices.framework */,
 			);
 			name = Frameworks;

@@ -20,6 +20,8 @@ struct ProfileView: View {
     @State private var showingSignOutConfirmation = false
     @State private var showingSettings = false
     @State private var showingFavoriteRoutes = false  // ADD THIS LINE
+    @State private var showingFeedbackComposer = false  // ADD THIS LINE
+
 
 
 
@@ -89,6 +91,9 @@ struct ProfileView: View {
         }
         .sheet(isPresented: $showingSettings) {
             SettingsView()
+        }
+        .sheet(isPresented: $showingFeedbackComposer) {
+            FeedbackComposerView()
         }
         .alert("Sign Out", isPresented: $showingSignOutConfirmation) {
             Button("Cancel", role: .cancel) { }
@@ -303,12 +308,12 @@ struct ProfileView: View {
                 .padding(.leading, 50)
             
             menuItem(
-                icon: "questionmark.circle.fill",
-                title: "Help & Support",
-                subtitle: "Contact us for assistance",
+                icon: "envelope.circle.fill",
+                title: "Send Feedback",
+                subtitle: "Report bugs or suggest features",
                 action: {
-                    hapticManager.menuNavigation()  // ADD THIS LINE
-                    print("❓ Help tapped - Coming in Phase 2!")
+                    hapticManager.menuNavigation()
+                    showingFeedbackComposer = true
                 }
             )
             
