@@ -77,11 +77,25 @@ struct RouteInputView: View {
             .onAppear {
                 loadDefaultSettings()
                 
-
-                // Check if there's a route to load
+                // ENHANCED: Check if there's a route to load with better timing
+                print("🔍 RouteInputView onAppear - checking for route to load...")
+                
                 if let routeToLoad = routeLoader.routeToLoad {
-                    loadSavedRoute(routeToLoad)
-                    routeLoader.clearLoadedRoute()
+                    print("📝 Found route to load: \(routeToLoad.startLocation) → \(routeToLoad.endLocation)")
+                    print("🔍 OptimizedStops in routeToLoad: \(routeToLoad.optimizedStops.count)")
+                    
+                    // Add a small delay to ensure SwiftUI is ready
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        loadSavedRoute(routeToLoad)
+                        
+                        // Clear the route after a slight delay to ensure loading completed
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                            routeLoader.clearLoadedRoute()
+                            print("🧹 Cleared loaded route from RouteLoader")
+                        }
+                    }
+                } else {
+                    print("🔍 No route to load found")
                 }
                 
                 // REFRESH SAVED ADDRESSES - NEW ADDITION
@@ -1144,8 +1158,19 @@ struct RouteInputView: View {
     }
     /// Populates the form with data from a saved route
     /// - Parameter routeData: The route data to load into the form
+
+    // MARK: - Enhanced Route Loading Fix
+    // Replace the existing loadSavedRoute function in RouteInputView.swift
+
+    /// Populates the form with data from a saved route
+    /// - Parameter routeData: The route data to load into the form
     private func loadSavedRoute(_ routeData: RouteData) {
         print("📝 Loading saved route into form...")
+        print("🔍 DEBUG: RouteData received:")
+        print("🔍   Start: '\(routeData.startLocation)'")
+        print("🔍   End: '\(routeData.endLocation)'")
+        print("🔍   Stops: \(routeData.stops)")
+        print("🔍   OptimizedStops count: \(routeData.optimizedStops.count)")
         
         // Add haptic feedback
         let impactFeedback = UIImpactFeedbackGenerator(style: .light)
@@ -1156,32 +1181,57 @@ struct RouteInputView: View {
             let startStop = routeData.optimizedStops.first!
             let endStop = routeData.optimizedStops.last!
             
+            print("🔍 DEBUG: Loading from optimizedStops:")
+            print("🔍   Start Stop: address='\(startStop.address)', name='\(startStop.name)', type=\(startStop.type)")
+            print("🔍   End Stop: address='\(endStop.address)', name='\(endStop.name)', type=\(endStop.type)")
+            
             // Load start location with saved display name
             startLocation = startStop.address
-            startLocationDisplayName = startStop.name.isEmpty ? extractBusinessName(startStop.address) : startStop.name
+            startLocationDisplayName = startStop.name.isEmpty ?
+                extractBusinessName(startStop.address) : startStop.name
             
-            // Load end location with saved display name
+            // Load end location with saved display name - ENHANCED ERROR CHECKING
             endLocation = endStop.address
-            endLocationDisplayName = endStop.name.isEmpty ? extractBusinessName(endStop.address) : endStop.name
+            endLocationDisplayName = endStop.name.isEmpty ?
+                extractBusinessName(endStop.address) : endStop.name
             
-            // Load stops with saved display names
-            let stopRoutes = Array(routeData.optimizedStops.dropFirst().dropLast()) // Remove start and end
-            stops = stopRoutes.isEmpty ? [""] : stopRoutes.map { $0.address }
-            stopDisplayNames = stopRoutes.isEmpty ? [""] : stopRoutes.map { $0.name.isEmpty ? extractBusinessName($0.address) : $0.name }
+            // DEFENSIVE: Double-check that endLocation was set correctly
+            if endLocation.isEmpty {
+                print("⚠️ WARNING: endLocation is empty after loading from optimizedStops!")
+                print("🔧 FALLBACK: Using routeData.endLocation instead")
+                endLocation = routeData.endLocation
+                endLocationDisplayName = extractBusinessName(routeData.endLocation)
+            }
             
-            print("✅ Loaded with saved display names: '\(startLocationDisplayName)' → '\(endLocationDisplayName)'")
+            // Load intermediate stops (excluding start and end)
+            let intermediateStops = Array(routeData.optimizedStops.dropFirst().dropLast())
+            stops = intermediateStops.isEmpty ? [""] : intermediateStops.map { $0.address }
+            stopDisplayNames = intermediateStops.isEmpty ? [""] : intermediateStops.map { $0.name.isEmpty ? extractBusinessName($0.address) : $0.name }
+            
+            print("✅ Loaded from optimizedStops: '\(startLocationDisplayName)' → '\(endLocationDisplayName)'")
+            print("🔍 FINAL CHECK: endLocation = '\(endLocation)'")
+            
         } else {
-            // Fallback to original logic
-            startLocation = routeData.startLocation
-            startLocationDisplayName = extractBusinessName(routeData.startLocation)
+            print("⚠️ WARNING: optimizedStops is empty, using fallback method")
             
+            // Fallback if no optimized stops saved
+            startLocation = routeData.startLocation
             endLocation = routeData.endLocation
+            startLocationDisplayName = extractBusinessName(routeData.startLocation)
             endLocationDisplayName = extractBusinessName(routeData.endLocation)
             
+            // DEFENSIVE: Ensure endLocation is not empty
+            if endLocation.isEmpty {
+                print("❌ ERROR: endLocation is empty in fallback mode!")
+                print("🔍 RouteData.endLocation = '\(routeData.endLocation)'")
+            }
+            
+            // Load stops
             stops = routeData.stops.isEmpty ? [""] : routeData.stops
             stopDisplayNames = routeData.stops.isEmpty ? [""] : routeData.stops.map { extractBusinessName($0) }
             
             print("✅ Loaded with extracted names: '\(startLocationDisplayName)' → '\(endLocationDisplayName)'")
+            print("🔍 FINAL CHECK: endLocation = '\(endLocation)'")
         }
         
         // Ensure we have at least one stop input
@@ -1193,6 +1243,19 @@ struct RouteInputView: View {
         // Load preferences
         considerTraffic = routeData.considerTraffic
         isRoundTrip = routeData.isRoundTrip
+        
+        // DEFENSIVE: Final verification that all required fields are populated
+        print("🔍 FINAL VERIFICATION:")
+        print("🔍   startLocation: '\(startLocation)' (display: '\(startLocationDisplayName)')")
+        print("🔍   endLocation: '\(endLocation)' (display: '\(endLocationDisplayName)')")
+        print("🔍   stops: \(stops)")
+        print("🔍   stopDisplayNames: \(stopDisplayNames)")
+        
+        // Force UI update to ensure fields are populated
+        DispatchQueue.main.async {
+            // SwiftUI will automatically update when @State variables change
+            print("🔄 UI will refresh automatically with @State changes")
+        }
     }
     
     /// Load user's default settings when view appears
