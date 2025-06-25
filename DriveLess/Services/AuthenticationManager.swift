@@ -272,7 +272,7 @@ extension AuthenticationManager: ASAuthorizationControllerDelegate {
             }
             
             // Initialize Firebase credential
-            let credential = OAuthProvider.credential(withProviderID: "apple.com",
+            let credential = OAuthProvider.credential(providerID: AuthProviderID.apple,
                                                     idToken: idTokenString,
                                                     rawNonce: nonce)
             
@@ -326,6 +326,14 @@ extension AuthenticationManager: ASAuthorizationControllerDelegate {
                     self.errorMessage = "Invalid response from Apple. Please try again."
                 case .notHandled:
                     self.errorMessage = "Apple Sign-In not handled. Please try again."
+                case .notInteractive:
+                    self.errorMessage = "Apple Sign-In not available in current context."
+                case .matchedExcludedCredential:
+                    self.errorMessage = "Apple Sign-In credential excluded. Please try again."
+                case .credentialImport:
+                    self.errorMessage = "Apple Sign-In credential import failed. Please try again."
+                case .credentialExport:
+                    self.errorMessage = "Apple Sign-In credential export failed. Please try again."
                 case .unknown:
                     self.errorMessage = "Unknown Apple Sign-In error. Please try again."
                 @unknown default:

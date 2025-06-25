@@ -51,8 +51,8 @@ class RouteHistoryManager: ObservableObject {
             let stopDisplayNames = routeData.optimizedStops
                 .dropFirst()  // Remove start
                 .dropLast()   // Remove end
-                .map { $0.name ?? extractBusinessName($0.address) }
-            
+                .map { $0.name.isEmpty ? extractBusinessName($0.address) : $0.name }
+
             if !stopDisplayNames.isEmpty {
                 do {
                     let displayNamesData = try JSONEncoder().encode(stopDisplayNames)
@@ -189,8 +189,8 @@ class RouteHistoryManager: ObservableObject {
                     let stopDisplayNames = routeData.optimizedStops
                         .dropFirst()
                         .dropLast()
-                        .map { $0.name ?? extractBusinessName($0.address) }
-                    
+                        .map { $0.name.isEmpty ? extractBusinessName($0.address) : $0.name }
+
                     if !stopDisplayNames.isEmpty {
                         do {
                             let displayNamesData = try JSONEncoder().encode(stopDisplayNames)
