@@ -228,18 +228,12 @@ struct ProfileView: View {
         .frame(maxWidth: .infinity)
     }
     
-    // MARK: - Admin Check (Computed Property)
     /// Checks if current user is an admin
     private var isCurrentUserAdmin: Bool {
         guard let currentUser = authManager.user else { return false }
         
-        // List of admin Firebase UIDs
-        let adminUIDs = [
-            "X4bKhg8XgfUAvAOgK97eMweHCz33", // Your current UID
-            // Add other admin UIDs here as needed
-        ]
-        
-        let isAdmin = adminUIDs.contains(currentUser.uid)
+        // Check admin status securely through configuration
+        let isAdmin = ConfigurationManager.shared.isAdminUser(currentUser.uid)
         
         if isAdmin {
             print("🔐 User \(currentUser.uid) is an admin")

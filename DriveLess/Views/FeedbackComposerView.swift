@@ -385,8 +385,8 @@ struct MailComposerView: UIViewControllerRepresentable {
     let onDismiss: (MFMailComposeResult) -> Void
     
     // MARK: - Hidden email recipient (your email address)
-    private let recipientEmail = "drivelesssavetime@gmail.com"
-    
+    private let recipientEmail = ConfigurationManager.shared.feedbackEmail
+
     func makeUIViewController(context: Context) -> MFMailComposeViewController {
         let composer = MFMailComposeViewController()
         

@@ -17,13 +17,34 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         FirebaseApp.configure()
         print("🔥 Firebase configured successfully")
         
-        // Your API key for Google Maps
-        let apiKey = "AIzaSyCancy_vwbDbYZavxDjtpL7NW4lYl8Tkmk"
+        // Get API key securely from configuration
+        let apiKey = ConfigurationManager.shared.googleAPIKey
         
-        // Configure Google Maps and Places - ONLY ONCE
+        // Validate that we have an API key (required for app to function)
+        if apiKey.isEmpty {
+            print("❌ CRITICAL: Google API Key is missing! App may not function properly.")
+            // Continue anyway to prevent crash, but log the issue
+        } else {
+            print("✅ Google API Key loaded successfully")
+        }
+        
+        // Validate other configuration (these are optional, so just warn)
+        if ConfigurationManager.shared.adminUserIDs.isEmpty {
+            print("⚠️ No admin users configured")
+        } else {
+            print("✅ Admin users configured: \(ConfigurationManager.shared.adminUserIDs.count)")
+        }
+        
+        if ConfigurationManager.shared.feedbackEmail.isEmpty {
+            print("⚠️ No feedback email configured")
+        } else {
+            print("✅ Feedback email configured")
+        }
+        
+        // Configure Google Maps and Places - Use API key even if empty (will fail gracefully)
         GMSServices.provideAPIKey(apiKey)
         GMSPlacesClient.provideAPIKey(apiKey)
-        print("🗺️ Google Maps SDK configured with API key: \(String(apiKey.prefix(10)))...")
+        print("🗺️ Google Maps SDK configured with key: \(apiKey.isEmpty ? "MISSING" : "✅ Present")")
         
         // Configure Google Sign-In
         guard let path = Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist"),

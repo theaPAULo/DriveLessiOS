@@ -64,8 +64,8 @@ class RouteCalculator: ObservableObject {
         
         // Build the Google Directions API URL
         let baseURL = "https://maps.googleapis.com/maps/api/directions/json"
-        let apiKey = "AIzaSyCancy_vwbDbYZavxDjtpL7NW4lYl8Tkmk"
-        
+        let apiKey = ConfigurationManager.shared.googleAPIKey
+
         var urlComponents = URLComponents(string: baseURL)!
         urlComponents.queryItems = [
             URLQueryItem(name: "origin", value: startLocation),
