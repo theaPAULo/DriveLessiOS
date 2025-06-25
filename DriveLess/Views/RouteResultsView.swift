@@ -69,7 +69,7 @@ struct RouteResultsView: View {
                     }
                 }
             }
-            .navigationTitle("Route Results")
+            .navigationTitle("Your Route")
             .navigationBarTitleDisplayMode(.large)
             .navigationBarBackButtonHidden(true)
             // REMOVED: Back button from toolbar
@@ -134,14 +134,10 @@ struct RouteResultsView: View {
             // Header with route info (REMOVED: Optimized badge)
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Route Summary")
+                    Text("Summary")
                         .font(.headline)
                         .fontWeight(.semibold)
                         .foregroundColor(themeManager.textPrimary)
-                    
-                    Text("Optimized for efficiency")
-                        .font(.subheadline)
-                        .foregroundColor(themeManager.textSecondary)
                 }
                 
                 Spacer()
@@ -254,7 +250,7 @@ struct RouteResultsView: View {
                     .font(.system(size: 18, weight: .medium))
                     .foregroundColor(themeManager.primary)
                 
-                Text("Route Order")
+                Text("Your Path")
                     .font(.headline)
                     .fontWeight(.semibold)
                     .foregroundColor(themeManager.textPrimary)

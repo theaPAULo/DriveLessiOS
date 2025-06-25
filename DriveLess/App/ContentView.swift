@@ -278,12 +278,6 @@ struct ContentView: View {
                     .font(.system(size: 11, weight: .medium))
                     .foregroundColor(.white.opacity(0.8))
             }
-            
-            Text("Sign in to sync your routes across devices")
-                .font(.system(size: 10))
-                .foregroundColor(.white.opacity(0.7))
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
         }
         .padding(.top, 4)
     }

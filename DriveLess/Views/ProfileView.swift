@@ -140,7 +140,7 @@ struct ProfileView: View {
     // MARK: - Quick Stats Card (Enhanced with Environmental Impact)
     private var quickStatsCard: some View {
         VStack(spacing: 16) {
-            Text("Route Statistics")
+            Text("Your Stats")
                 .font(.headline)
                 .fontWeight(.semibold)
                 .foregroundColor(themeManager.textPrimary)
@@ -255,7 +255,7 @@ struct ProfileView: View {
         VStack(spacing: 16) {
             
             // Route Management Section
-            menuSectionCard(title: "Route Management") {
+            menuSectionCard(title: "Your Routes") {
                 VStack(spacing: 12) {
                     menuRow(
                         icon: "clock.arrow.circlepath",
@@ -276,7 +276,7 @@ struct ProfileView: View {
             }
             
             // Address Management Section
-            menuSectionCard(title: "Address Management") {
+            menuSectionCard(title: "Your Addresses") {
                 menuRow(
                     icon: "house.fill",
                     title: "Saved Addresses",

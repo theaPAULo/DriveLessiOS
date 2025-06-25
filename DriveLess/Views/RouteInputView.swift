@@ -137,7 +137,7 @@ struct RouteInputView: View {
                     .fontWeight(.bold)
                     .foregroundColor(themeManager.textPrimary)
                 
-                Text("Find the most efficient path")
+                Text("Drive Less, Save Time")
                     .font(.subheadline)
                     .foregroundColor(themeManager.textSecondary)
             }
@@ -336,7 +336,7 @@ struct RouteInputView: View {
                                     stopDisplayNames[index] = newValue
                                 }
                             ),
-                            placeholder: "Stop \(index + 1) (optional)",
+                            placeholder: "Stop \(index + 1)",
                             icon: "mappin.circle",
                             iconColor: themeManager.secondary,
                             currentLocation: locationManager.location,
