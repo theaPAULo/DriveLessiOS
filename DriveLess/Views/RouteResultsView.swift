@@ -69,11 +69,22 @@ struct RouteResultsView: View {
                     }
                 }
             }
-            .navigationTitle("Your Route")
-            .navigationBarTitleDisplayMode(.large)
-            .navigationBarBackButtonHidden(true)
-            // REMOVED: Back button from toolbar
-            .onAppear {
+        .navigationTitle("Your Route")
+        .navigationBarTitleDisplayMode(.large)
+        .navigationBarBackButtonHidden(true)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button(action: {
+                    hapticManager.buttonTap()
+                    dismiss()
+                }) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundColor(themeManager.primary)
+                }
+            }
+        }
+        .onAppear {
                 calculateRealRoute()
                 checkIfFavorite()
             }
