@@ -2,7 +2,7 @@
 //  ContentView.swift
 //  DriveLess
 //
-//  Ultra-compact sign-in with unified theme system
+//  Ultra-compact sign-in with unified theme system and loading screen
 //
 
 import SwiftUI
@@ -16,15 +16,32 @@ struct ContentView: View {
     @EnvironmentObject var hapticManager: HapticManager
     @EnvironmentObject var settingsManager: SettingsManager
     
+    // MARK: - Loading Screen State
+    @State private var showLoadingScreen = true
+    
     // MARK: - Animation State
     @State private var gradientOffset: CGFloat = 0
     
     var body: some View {
         NavigationStack {
             Group {
-                if authManager.isSignedIn {
+                if showLoadingScreen {
+                    // Show loading screen first
+                    LoadingScreenView {
+                        // Callback when loading animation completes
+                        withAnimation(.easeInOut(duration: 0.5)) {
+                            showLoadingScreen = false
+                        }
+                    }
+                } else if authManager.isSignedIn {
                     // User is signed in - show main app
-                    MainTabView(locationManager: locationManager, authManager: authManager, themeManager: themeManager, hapticManager: hapticManager, settingsManager: settingsManager)
+                    MainTabView(
+                        locationManager: locationManager,
+                        authManager: authManager,
+                        themeManager: themeManager,
+                        hapticManager: hapticManager,
+                        settingsManager: settingsManager
+                    )
                 } else {
                     // User is not signed in - show ultra-compact sign-in screen
                     ultraCompactSignInView
@@ -52,44 +69,33 @@ struct ContentView: View {
             VStack(spacing: 0) {
                 
                 // MARK: - Compact Hero Section
-                VStack(spacing: 12) {
-                    
-                    // Minimal top spacer
-                    Spacer()
-                        .frame(height: 40)
-                    
-                    // Compact Logo/Title
-                    VStack(spacing: 8) {
-                        // Logo using theme colors
-                        Circle()
-                            .fill(
-                                LinearGradient(
-                                    gradient: Gradient(colors: [themeManager.primary.opacity(0.9), themeManager.accent.opacity(0.8)]),
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
+                VStack(spacing: 8) {
+                    // Hero icon (smaller)
+                    Image(systemName: "map.circle.fill")
+                        .font(.system(size: 50, weight: .medium))
+                        .foregroundStyle(
+                            LinearGradient(
+                                gradient: Gradient(colors: [Color.white, Color.white.opacity(0.8)]),
+                                startPoint: .top,
+                                endPoint: .bottom
                             )
-                            .frame(width: 70, height: 70)
-                            .overlay(
-                                Image(systemName: "map.fill")
-                                    .font(.system(size: 30, weight: .bold))
-                                    .foregroundColor(.white)
-                            )
-                            .shadow(color: themeManager.cardShadow(), radius: 8, x: 0, y: 3)
-                        
-                        Text("DriveLess")
-                            .font(.system(size: 32, weight: .bold))
-                            .foregroundColor(.white)
-                            .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: 1)
-                        
-                        Text("Drive Less, Save Time")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.white.opacity(0.9))
-                            .shadow(color: .black.opacity(0.2), radius: 1, x: 0, y: 1)
-                    }
+                        )
+                        .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
                     
-                    // Compact Features (SINGLE ROW)
-                    HStack(spacing: 8) {
+                    // Main title (smaller)
+                    Text("DriveLess")
+                        .font(.system(size: 36, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: 1)
+                    
+                    // Subtitle (compact)
+                    Text("Smarter routes for every journey")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.white.opacity(0.9))
+                        .shadow(color: .black.opacity(0.2), radius: 1, x: 0, y: 1)
+                    
+                    // MARK: - Compact Feature Row (3 items, smaller)
+                    HStack(spacing: 24) {
                         compactFeatureItem(icon: "map.circle.fill", title: "Smart Routes")
                         compactFeatureItem(icon: "clock.fill", title: "Real-Time")
                         compactFeatureItem(icon: "location.circle.fill", title: "Save Fuel")
@@ -197,8 +203,8 @@ struct ContentView: View {
                 .background(
                     LinearGradient(
                         gradient: Gradient(colors: [
-                            themeManager.colors.forestGreen,
-                            themeManager.colors.primaryGreen.opacity(0.9)
+                            DriveLessColors.forestGreen,
+                            DriveLessColors.primaryGreen.opacity(0.9)
                         ]),
                         startPoint: .leading,
                         endPoint: .trailing
@@ -209,23 +215,8 @@ struct ContentView: View {
             }
             .disabled(authManager.isLoading)
             .opacity(authManager.isLoading ? 0.7 : 1.0)
-            
-            // Divider with "OR"
-            HStack {
-                Rectangle()
-                    .frame(height: 1)
-                    .foregroundColor(.white.opacity(0.4))
-                
-                Text("OR")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(.white.opacity(0.8))
-                    .padding(.horizontal, 10)
-                
-                Rectangle()
-                    .frame(height: 1)
-                    .foregroundColor(.white.opacity(0.4))
-            }
-            .padding(.vertical, 2)
+            .scaleEffect(authManager.isLoading ? 0.98 : 1.0)
+            .animation(.easeInOut(duration: 0.2), value: authManager.isLoading)
             
             // Google Sign-In Button (Light Earthy Gradient)
             Button(action: {
@@ -235,7 +226,7 @@ struct ContentView: View {
                 HStack(spacing: 10) {
                     if authManager.isLoading {
                         ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: themeManager.colors.primaryGreen))
+                            .progressViewStyle(CircularProgressViewStyle(tint: DriveLessColors.forestGreen))
                             .scaleEffect(0.7)
                     } else {
                         Image(systemName: "globe")
@@ -245,83 +236,95 @@ struct ContentView: View {
                     Text(authManager.isLoading ? "Signing in..." : "Continue with Google")
                         .font(.system(size: 16, weight: .semibold))
                 }
-                .foregroundColor(themeManager.colors.forestGreen)
+                .foregroundColor(DriveLessColors.forestGreen)
                 .frame(maxWidth: .infinity)
                 .frame(height: 44)
                 .background(
                     LinearGradient(
                         gradient: Gradient(colors: [
-                            themeManager.colors.warmBeige,
-                            themeManager.colors.lightGreen.opacity(0.8)
+                            Color.white,
+                            Color.white.opacity(0.95)
                         ]),
                         startPoint: .leading,
                         endPoint: .trailing
                     )
                 )
                 .cornerRadius(14)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(themeManager.colors.forestGreen.opacity(0.3), lineWidth: 1)
+                )
                 .shadow(color: themeManager.cardShadow(), radius: 6, x: 0, y: 3)
             }
             .disabled(authManager.isLoading)
             .opacity(authManager.isLoading ? 0.7 : 1.0)
+            .scaleEffect(authManager.isLoading ? 0.98 : 1.0)
+            .animation(.easeInOut(duration: 0.2), value: authManager.isLoading)
         }
     }
     
     // MARK: - Privacy Notice Component
     private var privacyNotice: some View {
-        VStack(spacing: 4) {
-            HStack(spacing: 4) {
-                Image(systemName: "lock.shield.fill")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(.white.opacity(0.8))
-                
-                Text("Your data is secure and private")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(.white.opacity(0.8))
-            }
-        }
-        .padding(.top, 4)
+        Text("By continuing, you agree to our Terms of Service and Privacy Policy. We protect your data and don't share personal information.")
+            .font(.system(size: 12, weight: .regular))
+            .foregroundColor(.white.opacity(0.8))
+            .multilineTextAlignment(.center)
+            .shadow(color: .black.opacity(0.2), radius: 1, x: 0, y: 1)
     }
     
-    // MARK: - Card Background Component
-    private var cardBackground: some View {
-        RoundedRectangle(cornerRadius: 18)
-            .fill(Color.black.opacity(0.15))
-            .overlay(
-                RoundedRectangle(cornerRadius: 18)
-                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
-            )
-            .background(
-                RoundedRectangle(cornerRadius: 18)
-                    .fill(.ultraThinMaterial)
-            )
-    }
-    
-    // MARK: - Compact Feature Item
+    // MARK: - Compact Feature Item Component
     private func compactFeatureItem(icon: String, title: String) -> some View {
         VStack(spacing: 4) {
             Image(systemName: icon)
-                .font(.system(size: 16, weight: .medium))
-                .foregroundColor(.white.opacity(0.9))
-                .shadow(color: .black.opacity(0.2), radius: 1, x: 0, y: 1)
+                .font(.system(size: 20, weight: .medium))
+                .foregroundColor(.white)
+                .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: 1)
             
             Text(title)
-                .font(.system(size: 11, weight: .semibold))
+                .font(.system(size: 12, weight: .semibold))
                 .foregroundColor(.white.opacity(0.9))
                 .shadow(color: .black.opacity(0.2), radius: 1, x: 0, y: 1)
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
         }
-        .frame(maxWidth: .infinity)
     }
     
-    // MARK: - Animation Methods
+    // MARK: - Card Background (Using Theme System)
+    private var cardBackground: some View {
+        RoundedRectangle(cornerRadius: 20)
+            .fill(.ultraThinMaterial)
+            .background(
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                Color.white.opacity(0.25),
+                                Color.white.opacity(0.1)
+                            ]),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 20)
+                    .stroke(
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                Color.white.opacity(0.6),
+                                Color.clear
+                            ]),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
+            )
+            .shadow(color: themeManager.cardShadow(), radius: 20, x: 0, y: 10)
+    }
+    
+    // MARK: - Animation Helper
     private func startGradientAnimation() {
-        withAnimation(.linear(duration: 8.0).repeatForever(autoreverses: true)) {
-            gradientOffset = 0.3
+        withAnimation(.linear(duration: 8.0).repeatForever(autoreverses: false)) {
+            gradientOffset = 100
         }
     }
-}
-
-#Preview {
-    ContentView()
 }
