@@ -347,7 +347,10 @@ struct ProfileView: View {
         )
     }
     
-    // MARK: - Menu Row (Themed)
+    // SURGICAL FIX: Only replace the menuRow function in ProfileView.swift
+    // Keep everything else exactly the same
+
+    // MARK: - Menu Row (Enhanced Clickability)
     private func menuRow(
         icon: String,
         title: String,
@@ -360,7 +363,7 @@ struct ProfileView: View {
             action()
         }) {
             HStack(spacing: 16) {
-                // Icon with themed background
+                // Icon with themed background (UNCHANGED)
                 Circle()
                     .fill(
                         LinearGradient(
@@ -379,7 +382,7 @@ struct ProfileView: View {
                             .foregroundColor(.white)
                     )
                 
-                // Text content
+                // Text content (UNCHANGED)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
                         .font(.system(size: 16, weight: .medium))
@@ -392,13 +395,16 @@ struct ProfileView: View {
                 
                 Spacer()
                 
-                // Chevron
+                // Chevron (UNCHANGED)
                 Image(systemName: "chevron.right")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(themeManager.textTertiary)
             }
+            .contentShape(Rectangle()) // ADDED: Makes entire area clickable
+            .padding(.vertical, 8)      // ADDED: Larger vertical touch target
+            .padding(.horizontal, 4)    // ADDED: Larger horizontal touch target
         }
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(EnhancedMenuButtonStyle()) // ADDED: Smooth press animation
     }
     
     // MARK: - Menu Divider (Themed)
@@ -529,6 +535,16 @@ struct ProfileView: View {
         authManager.signOut()
         
         print("✅ User signed out successfully")
+    }
+    
+    // MARK: - Enhanced Button Style (ADD THIS NEW STRUCT)
+    struct EnhancedMenuButtonStyle: ButtonStyle {
+        func makeBody(configuration: Configuration) -> some View {
+            configuration.label
+                .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
+                .opacity(configuration.isPressed ? 0.9 : 1.0)
+                .animation(.easeInOut(duration: 0.15), value: configuration.isPressed)
+        }
     }
 }
 
