@@ -20,6 +20,9 @@ struct ProfileView: View {
     @State private var showingRouteHistory = false
     @State private var showingAdminDashboard = false
     @State private var showingSignOutConfirmation = false
+    @State private var showingDeleteAccountConfirmation = false  // ADD THIS LINE
+    @State private var showingDeleteAccountFinalConfirmation = false  // ADD THIS LINE
+    @State private var isDeletingAccount = false  // ADD THIS LINE
     @State private var showingSettings = false
     @State private var showingFavoriteRoutes = false
     @State private var showingFeedbackComposer = false
@@ -80,13 +83,31 @@ struct ProfileView: View {
             FeedbackComposerView()
         }
         .alert("Sign Out", isPresented: $showingSignOutConfirmation) {
-            Button("Cancel", role: .cancel) { }
-            Button("Sign Out", role: .destructive) {
-                confirmSignOut()
-            }
-        } message: {
-            Text("Are you sure you want to sign out of DriveLess?")
-        }
+                    Button("Cancel", role: .cancel) { }
+                    Button("Sign Out", role: .destructive) {
+                        confirmSignOut()
+                    }
+                } message: {
+                    Text("Are you sure you want to sign out of DriveLess?")
+                }
+                .alert("Delete Account", isPresented: $showingDeleteAccountConfirmation) {
+                            Button("Cancel", role: .cancel) { }
+                            Button("Continue", role: .destructive) {
+                                showingDeleteAccountFinalConfirmation = true
+                            }
+                        } message: {
+                            Text("This will permanently delete your account and all associated data including:\n\n• Route history\n• Saved addresses\n• App preferences\n\nThis action cannot be undone.")
+                        }
+                        .alert("Final Confirmation", isPresented: $showingDeleteAccountFinalConfirmation) {
+                            Button("Cancel", role: .cancel) { }
+                            Button("Delete Forever", role: .destructive) {
+                                Task {
+                                    await deleteAccount()
+                                }
+                            }
+                        } message: {
+                            Text("You will need to sign in again to confirm this action. Are you for sure you want to delete your account? This action is permanent and cannot be undone.")
+                        }
         .onAppear {
             loadRouteHistory()
         }
@@ -321,6 +342,13 @@ struct ProfileView: View {
                     isDestructive: true,
                     action: { showingSignOutConfirmation = true }
                 )
+                menuRow(
+                    icon: "trash.fill",
+                    title: "Delete Account",
+                    subtitle: "Permanently delete your account and all data",
+                    isDestructive: true,
+                    action: { showingDeleteAccountConfirmation = true }
+                )
             }
         }
     }
@@ -536,6 +564,27 @@ struct ProfileView: View {
         
         print("✅ User signed out successfully")
     }
+    
+    
+    // MARK: - Delete Account
+        private func deleteAccount() async {
+            await MainActor.run {
+                isDeletingAccount = true
+            }
+            
+            // Add haptic feedback
+            hapticManager.impact(.heavy)
+            
+            // Call the authentication manager's reauthenticate and delete account method
+            await authManager.reauthenticateAndDeleteAccount()
+            
+            await MainActor.run {
+                isDeletingAccount = false
+            }
+            
+            // If there was an error, the authManager will handle showing it
+            // If successful, the user will be automatically signed out and redirected
+        }
     
     // MARK: - Enhanced Button Style (ADD THIS NEW STRUCT)
     struct EnhancedMenuButtonStyle: ButtonStyle {

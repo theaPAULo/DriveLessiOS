@@ -12,6 +12,7 @@ import FirebaseCore
 import GoogleSignIn
 import AuthenticationServices  // ADD: Import for Apple Sign-In
 import CryptoKit  // ADD: Import for Apple Sign-In crypto
+import CoreData  // ADD THIS LINE
 
 // MARK: - User Model
 struct DriveLessUser {
@@ -38,6 +39,7 @@ class AuthenticationManager: NSObject, ObservableObject {
     
     // ADD: Apple Sign-In specific properties
     private var currentNonce: String?
+    private var reauthContinuation: CheckedContinuation<Void, Error>?  // ADD THIS LINE
     
     override init() {
         super.init()
@@ -104,6 +106,199 @@ class AuthenticationManager: NSObject, ObservableObject {
         
         isLoading = false
     }
+    
+    /// Deletes the user's account and all associated data
+        func deleteAccount() async {
+            print("🗑️ Starting account deletion process...")
+            
+            await MainActor.run {
+                isLoading = true
+                errorMessage = nil
+            }
+            
+            guard let currentUser = Auth.auth().currentUser else {
+                await MainActor.run {
+                    self.errorMessage = "No user is currently signed in"
+                    self.isLoading = false
+                }
+                return
+            }
+            
+            do {
+                // Step 1: Clear all local Core Data
+                print("🗑️ Clearing local data...")
+                await clearAllUserData()
+                
+                // Step 2: Delete Firebase Auth account
+                print("🗑️ Deleting Firebase account...")
+                try await currentUser.delete()
+                
+                await MainActor.run {
+                    print("✅ Account deletion successful")
+                    self.user = nil
+                    self.isSignedIn = false
+                    self.isLoading = false
+                }
+                
+            } catch {
+                await MainActor.run {
+                    print("❌ Account deletion failed: \(error.localizedDescription)")
+                    self.errorMessage = "Failed to delete account: \(error.localizedDescription)"
+                    self.isLoading = false
+                }
+            }
+        }
+        
+        /// Clears all user data from Core Data
+        private func clearAllUserData() async {
+            await withCheckedContinuation { continuation in
+                let context = CoreDataManager.shared.backgroundContext()
+                
+                context.perform {
+                    do {
+                        // Delete all SavedRoute entities
+                        let routeRequest: NSFetchRequest<NSFetchRequestResult> = NSFetchRequest(entityName: "SavedRoute")
+                        let routeDeleteRequest = NSBatchDeleteRequest(fetchRequest: routeRequest)
+                        try context.execute(routeDeleteRequest)
+                        
+                        // Delete all SavedAddress entities
+                        let addressRequest: NSFetchRequest<NSFetchRequestResult> = NSFetchRequest(entityName: "SavedAddress")
+                        let addressDeleteRequest = NSBatchDeleteRequest(fetchRequest: addressRequest)
+                        try context.execute(addressDeleteRequest)
+                        
+                        // Delete all UsageTracking entities
+                        let usageRequest: NSFetchRequest<NSFetchRequestResult> = NSFetchRequest(entityName: "UsageTracking")
+                        let usageDeleteRequest = NSBatchDeleteRequest(fetchRequest: usageRequest)
+                        try context.execute(usageDeleteRequest)
+                        
+                        // Save the context
+                        try context.save()
+                        
+                        print("✅ All local user data cleared")
+                        continuation.resume()
+                        
+                    } catch {
+                        print("❌ Failed to clear local data: \(error.localizedDescription)")
+                        continuation.resume()
+                    }
+                }
+            }
+        }
+    
+    /// Reauthenticates the user and then deletes the account
+        func reauthenticateAndDeleteAccount() async {
+            print("🔐 Starting reauthentication for account deletion...")
+            
+            await MainActor.run {
+                isLoading = true
+                errorMessage = nil
+            }
+            
+            guard let currentUser = user else {
+                await MainActor.run {
+                    self.errorMessage = "No user is currently signed in"
+                    self.isLoading = false
+                }
+                return
+            }
+            
+            do {
+                // Step 1: Reauthenticate based on provider
+                switch currentUser.provider {
+                case .google:
+                    print("🌐 Reauthenticating with Google...")
+                    try await reauthenticateWithGoogle()
+                case .apple:
+                    print("🍎 Reauthenticating with Apple...")
+                    try await reauthenticateWithApple()
+                }
+                
+                // Step 2: Now delete the account (user is freshly authenticated)
+                await deleteAccount()
+                
+            } catch {
+                await MainActor.run {
+                    print("❌ Reauthentication failed: \(error.localizedDescription)")
+                    self.errorMessage = "Reauthentication failed: \(error.localizedDescription)"
+                    self.isLoading = false
+                }
+            }
+        }
+        
+        /// Reauthenticates with Google
+        private func reauthenticateWithGoogle() async throws {
+            return try await withCheckedThrowingContinuation { continuation in
+                Task { @MainActor in
+                    // Get the client ID from Firebase configuration
+                    guard let clientID = FirebaseApp.app()?.options.clientID else {
+                        continuation.resume(throwing: NSError(domain: "AuthError", code: -1, userInfo: [NSLocalizedDescriptionKey: "No Firebase client ID found"]))
+                        return
+                    }
+                    
+                    // Configure Google Sign-In
+                    guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                          let rootViewController = windowScene.windows.first?.rootViewController else {
+                        continuation.resume(throwing: NSError(domain: "AuthError", code: -1, userInfo: [NSLocalizedDescriptionKey: "Could not find root view controller"]))
+                        return
+                    }
+                    
+                    GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID)
+                    
+                    GIDSignIn.sharedInstance.signIn(withPresenting: rootViewController) { result, error in
+                        if let error = error {
+                            continuation.resume(throwing: error)
+                            return
+                        }
+                        
+                        guard let user = result?.user,
+                              let idToken = user.idToken?.tokenString else {
+                            continuation.resume(throwing: NSError(domain: "AuthError", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to get Google user token"]))
+                            return
+                        }
+                        
+                        let credential = GoogleAuthProvider.credential(
+                            withIDToken: idToken,
+                            accessToken: user.accessToken.tokenString
+                        )
+                        
+                        // Reauthenticate with Firebase
+                        Auth.auth().currentUser?.reauthenticate(with: credential) { _, error in
+                            if let error = error {
+                                continuation.resume(throwing: error)
+                            } else {
+                                print("✅ Google reauthentication successful")
+                                continuation.resume()
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        /// Reauthenticates with Apple
+        private func reauthenticateWithApple() async throws {
+            return try await withCheckedThrowingContinuation { continuation in
+                Task { @MainActor in
+                    // Generate a random nonce for security
+                    let nonce = randomNonceString()
+                    self.currentNonce = nonce
+                    
+                    // Create Apple Sign-In request
+                    let request = ASAuthorizationAppleIDProvider().createRequest()
+                    request.requestedScopes = [] // No scopes needed for reauthentication
+                    request.nonce = sha256(nonce)
+                    
+                    // Store continuation for callback
+                    self.reauthContinuation = continuation
+                    
+                    // Create authorization controller
+                    let authorizationController = ASAuthorizationController(authorizationRequests: [request])
+                    authorizationController.delegate = self
+                    authorizationController.presentationContextProvider = self
+                    authorizationController.performRequests()
+                }
+            }
+        }
     
     /// Signs in with Google
     func signInWithGoogle() {
@@ -241,111 +436,150 @@ class AuthenticationManager: NSObject, ObservableObject {
 extension AuthenticationManager: ASAuthorizationControllerDelegate {
     
     func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
-        print("🍎 Apple Sign-In completed successfully")
-        
-        if let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential {
-            guard let nonce = currentNonce else {
-                print("❌ Invalid state: A login callback was received, but no login request was sent.")
-                Task { @MainActor in
-                    self.errorMessage = "Apple Sign-In failed: Invalid state"
-                    self.isLoading = false
+            print("🍎 Apple Sign-In completed successfully")
+            
+            if let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential {
+                guard let nonce = currentNonce else {
+                    print("❌ Invalid state: A login callback was received, but no login request was sent.")
+                    Task { @MainActor in
+                        if let continuation = self.reauthContinuation {
+                            continuation.resume(throwing: NSError(domain: "AuthError", code: -1, userInfo: [NSLocalizedDescriptionKey: "Apple Sign-In failed: Invalid state"]))
+                            self.reauthContinuation = nil
+                        } else {
+                            self.errorMessage = "Apple Sign-In failed: Invalid state"
+                            self.isLoading = false
+                        }
+                    }
+                    return
                 }
-                return
-            }
-            
-            guard let appleIDToken = appleIDCredential.identityToken else {
-                print("❌ Unable to fetch identity token from Apple")
-                Task { @MainActor in
-                    self.errorMessage = "Apple Sign-In failed: No identity token"
-                    self.isLoading = false
+                
+                guard let appleIDToken = appleIDCredential.identityToken else {
+                    print("❌ Unable to fetch identity token from Apple")
+                    Task { @MainActor in
+                        if let continuation = self.reauthContinuation {
+                            continuation.resume(throwing: NSError(domain: "AuthError", code: -1, userInfo: [NSLocalizedDescriptionKey: "Apple Sign-In failed: No identity token"]))
+                            self.reauthContinuation = nil
+                        } else {
+                            self.errorMessage = "Apple Sign-In failed: No identity token"
+                            self.isLoading = false
+                        }
+                    }
+                    return
                 }
-                return
-            }
-            
-            guard let idTokenString = String(data: appleIDToken, encoding: .utf8) else {
-                print("❌ Unable to serialize token string from data")
-                Task { @MainActor in
-                    self.errorMessage = "Apple Sign-In failed: Token serialization error"
-                    self.isLoading = false
+                
+                guard let idTokenString = String(data: appleIDToken, encoding: .utf8) else {
+                    print("❌ Unable to serialize token string from data")
+                    Task { @MainActor in
+                        if let continuation = self.reauthContinuation {
+                            continuation.resume(throwing: NSError(domain: "AuthError", code: -1, userInfo: [NSLocalizedDescriptionKey: "Apple Sign-In failed: Token serialization error"]))
+                            self.reauthContinuation = nil
+                        } else {
+                            self.errorMessage = "Apple Sign-In failed: Token serialization error"
+                            self.isLoading = false
+                        }
+                    }
+                    return
                 }
-                return
-            }
-            
-            // Initialize Firebase credential
-            let credential = OAuthProvider.credential(providerID: AuthProviderID.apple,
-                                                    idToken: idTokenString,
-                                                    rawNonce: nonce)
-            
-            // Sign in with Firebase
-            Auth.auth().signIn(with: credential) { authResult, error in
-                Task { @MainActor in
-                    if let error = error {
-                        print("❌ Firebase Apple Sign-In error: \(error.localizedDescription)")
-                        self.errorMessage = "Apple Sign-In failed: \(error.localizedDescription)"
-                    } else {
-                        print("✅ Apple Sign-In successful")
-                        
-                        // Update display name if this is the first time signing in
-                        if let user = authResult?.user, user.displayName == nil {
-                            let changeRequest = user.createProfileChangeRequest()
-                            let fullName = [appleIDCredential.fullName?.givenName, appleIDCredential.fullName?.familyName]
-                                .compactMap { $0 }
-                                .joined(separator: " ")
-                            
-                            if !fullName.isEmpty {
-                                changeRequest.displayName = fullName
-                                changeRequest.commitChanges { error in
-                                    if let error = error {
-                                        print("❌ Error updating display name: \(error.localizedDescription)")
-                                    } else {
-                                        print("✅ Display name updated to: \(fullName)")
+                
+                // Initialize Firebase credential
+                let credential = OAuthProvider.credential(providerID: AuthProviderID.apple,
+                                                        idToken: idTokenString,
+                                                        rawNonce: nonce)
+                
+                // Check if this is reauthentication or normal sign-in
+                if let continuation = reauthContinuation {
+                    // This is reauthentication for account deletion
+                    Auth.auth().currentUser?.reauthenticate(with: credential) { _, error in
+                        Task { @MainActor in
+                            if let error = error {
+                                print("❌ Apple reauthentication failed: \(error.localizedDescription)")
+                                continuation.resume(throwing: error)
+                            } else {
+                                print("✅ Apple reauthentication successful")
+                                continuation.resume()
+                            }
+                            self.reauthContinuation = nil
+                        }
+                    }
+                } else {
+                    // This is normal sign-in
+                    Auth.auth().signIn(with: credential) { authResult, error in
+                        Task { @MainActor in
+                            if let error = error {
+                                print("❌ Firebase Apple Sign-In error: \(error.localizedDescription)")
+                                self.errorMessage = "Apple Sign-In failed: \(error.localizedDescription)"
+                            } else {
+                                print("✅ Apple Sign-In successful")
+                                
+                                // Update display name if this is the first time signing in
+                                if let user = authResult?.user, user.displayName == nil {
+                                    let changeRequest = user.createProfileChangeRequest()
+                                    let fullName = [appleIDCredential.fullName?.givenName, appleIDCredential.fullName?.familyName]
+                                        .compactMap { $0 }
+                                        .joined(separator: " ")
+                                    
+                                    if !fullName.isEmpty {
+                                        changeRequest.displayName = fullName
+                                        changeRequest.commitChanges { error in
+                                            if let error = error {
+                                                print("❌ Error updating display name: \(error.localizedDescription)")
+                                            } else {
+                                                print("✅ Display name updated to: \(fullName)")
+                                            }
+                                        }
                                     }
                                 }
                             }
+                            self.isLoading = false
                         }
                     }
-                    self.isLoading = false
                 }
             }
         }
-    }
-    
-    func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
-        print("❌ Apple Sign-In error: \(error.localizedDescription)")
         
-        Task { @MainActor in
-            // Handle different Apple Sign-In error cases
-            if let authError = error as? ASAuthorizationError {
-                switch authError.code {
-                case .canceled:
-                    print("🍎 User canceled Apple Sign-In")
-                    self.errorMessage = nil // Don't show error for user cancellation
-                case .failed:
-                    self.errorMessage = "Apple Sign-In failed. Please try again."
-                case .invalidResponse:
-                    self.errorMessage = "Invalid response from Apple. Please try again."
-                case .notHandled:
-                    self.errorMessage = "Apple Sign-In not handled. Please try again."
-                case .notInteractive:
-                    self.errorMessage = "Apple Sign-In not available in current context."
-                case .matchedExcludedCredential:
-                    self.errorMessage = "Apple Sign-In credential excluded. Please try again."
-                case .credentialImport:
-                    self.errorMessage = "Apple Sign-In credential import failed. Please try again."
-                case .credentialExport:
-                    self.errorMessage = "Apple Sign-In credential export failed. Please try again."
-                case .unknown:
-                    self.errorMessage = "Unknown Apple Sign-In error. Please try again."
-                @unknown default:
-                    self.errorMessage = "Apple Sign-In error. Please try again."
-                }
-            } else {
-                self.errorMessage = "Apple Sign-In failed: \(error.localizedDescription)"
-            }
+        func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
+            print("❌ Apple Sign-In error: \(error.localizedDescription)")
             
-            self.isLoading = false
+            Task { @MainActor in
+                // Check if this is reauthentication
+                if let continuation = self.reauthContinuation {
+                    continuation.resume(throwing: error)
+                    self.reauthContinuation = nil
+                    return
+                }
+                
+                // Handle different Apple Sign-In error cases for normal sign-in
+                if let authError = error as? ASAuthorizationError {
+                    switch authError.code {
+                    case .canceled:
+                        print("🍎 User canceled Apple Sign-In")
+                        self.errorMessage = nil // Don't show error for user cancellation
+                    case .failed:
+                        self.errorMessage = "Apple Sign-In failed. Please try again."
+                    case .invalidResponse:
+                        self.errorMessage = "Invalid response from Apple. Please try again."
+                    case .notHandled:
+                        self.errorMessage = "Apple Sign-In not handled. Please try again."
+                    case .notInteractive:
+                        self.errorMessage = "Apple Sign-In not available in current context."
+                    case .matchedExcludedCredential:
+                        self.errorMessage = "Apple Sign-In credential excluded. Please try again."
+                    case .credentialImport:
+                        self.errorMessage = "Apple Sign-In credential import failed. Please try again."
+                    case .credentialExport:
+                        self.errorMessage = "Apple Sign-In credential export failed. Please try again."
+                    case .unknown:
+                        self.errorMessage = "Unknown Apple Sign-In error. Please try again."
+                    @unknown default:
+                        self.errorMessage = "Apple Sign-In error. Please try again."
+                    }
+                } else {
+                    self.errorMessage = "Apple Sign-In failed: \(error.localizedDescription)"
+                }
+                
+                self.isLoading = false
+            }
         }
-    }
 }
 
 // ADD: Apple Sign-In presentation context provider
