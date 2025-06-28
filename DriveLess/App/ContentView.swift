@@ -88,8 +88,8 @@ struct ContentView: View {
                         .foregroundColor(.white)
                         .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: 1)
                     
-                    // Subtitle (compact)
-                    Text("Smarter routes for every journey")
+                    // Subtitle (RESTORED ORIGINAL)
+                    Text("Drive Less, Save Time")
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(.white.opacity(0.9))
                         .shadow(color: .black.opacity(0.2), radius: 1, x: 0, y: 1)
@@ -120,27 +120,36 @@ struct ContentView: View {
         .animation(.easeInOut(duration: 0.3), value: authManager.errorMessage)
     }
     
-    // MARK: - Animated Gradient Background (Using Theme System)
+    // MARK: - Animated Gradient Background (Original Earthy Colors)
     private var animatedGradientBackground: some View {
-        themeManager.animatedGradient(offset: gradientOffset)
-            .ignoresSafeArea()
+        LinearGradient(
+            gradient: Gradient(colors: [
+                Color(red: 0.13, green: 0.27, blue: 0.13), // Deep forest green
+                Color(red: 0.2, green: 0.4, blue: 0.2),    // Primary green
+                Color(red: 0.5, green: 0.6, blue: 0.4),    // Olive green
+                Color(red: 0.4, green: 0.3, blue: 0.2)     // Rich brown
+            ]),
+            startPoint: UnitPoint(x: gradientOffset / 100, y: 0),
+            endPoint: UnitPoint(x: (gradientOffset / 100) + 1, y: 1)
+        )
+        .ignoresSafeArea()
     }
     
-    // MARK: - Compact Authentication Card (Broken into components)
+    // MARK: - Compact Authentication Card (Updated for OR divider spacing)
     private var compactAuthCard: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 16) {
             // Error message component
             if let errorMessage = authManager.errorMessage {
                 errorMessageView(errorMessage)
             }
             
-            // Sign-in buttons component (now includes both Apple and Google)
+            // Sign-in buttons component (now includes OR divider)
             signInButton
             
             // Privacy notice component
             privacyNotice
         }
-        .padding(18)
+        .padding(20)
         .background(cardBackground)
     }
     
@@ -169,9 +178,9 @@ struct ContentView: View {
         .transition(.scale.combined(with: .opacity))
     }
     
-    // MARK: - Sign-In Buttons Component (Unified Earthy Theme)
+    // MARK: - Sign-In Buttons Component (Original with OR divider)
     private var signInButton: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 16) {
             // Title
             Text("Sign in to start planning routes")
                 .font(.system(size: 16, weight: .semibold))
@@ -179,7 +188,7 @@ struct ContentView: View {
                 .multilineTextAlignment(.center)
                 .shadow(color: .black.opacity(0.3), radius: 1, x: 0, y: 1)
             
-            // Apple Sign-In Button (Dark Earthy Gradient)
+            // Apple Sign-In Button (Dark Forest Green)
             Button(action: {
                 hapticManager.buttonTap()
                 authManager.signInWithApple()
@@ -203,22 +212,39 @@ struct ContentView: View {
                 .background(
                     LinearGradient(
                         gradient: Gradient(colors: [
-                            DriveLessColors.forestGreen,
-                            DriveLessColors.primaryGreen.opacity(0.9)
+                            Color(red: 0.13, green: 0.27, blue: 0.13), // Deep forest green
+                            Color(red: 0.2, green: 0.4, blue: 0.2).opacity(0.9) // Primary green
                         ]),
                         startPoint: .leading,
                         endPoint: .trailing
                     )
                 )
                 .cornerRadius(14)
-                .shadow(color: themeManager.cardShadow(), radius: 6, x: 0, y: 3)
+                .shadow(color: .black.opacity(0.25), radius: 6, x: 0, y: 3)
             }
             .disabled(authManager.isLoading)
             .opacity(authManager.isLoading ? 0.7 : 1.0)
             .scaleEffect(authManager.isLoading ? 0.98 : 1.0)
             .animation(.easeInOut(duration: 0.2), value: authManager.isLoading)
             
-            // Google Sign-In Button (Light Earthy Gradient)
+            // OR Divider (RESTORED ORIGINAL)
+            HStack {
+                Rectangle()
+                    .fill(Color.white.opacity(0.3))
+                    .frame(height: 1)
+                
+                Text("OR")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.white.opacity(0.8))
+                    .padding(.horizontal, 16)
+                
+                Rectangle()
+                    .fill(Color.white.opacity(0.3))
+                    .frame(height: 1)
+            }
+            .padding(.horizontal, 20)
+            
+            // Google Sign-In Button (Light theme)
             Button(action: {
                 hapticManager.buttonTap()
                 authManager.signInWithGoogle()
@@ -226,7 +252,7 @@ struct ContentView: View {
                 HStack(spacing: 10) {
                     if authManager.isLoading {
                         ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: DriveLessColors.forestGreen))
+                            .progressViewStyle(CircularProgressViewStyle(tint: Color(red: 0.13, green: 0.27, blue: 0.13)))
                             .scaleEffect(0.7)
                     } else {
                         Image(systemName: "globe")
@@ -236,7 +262,7 @@ struct ContentView: View {
                     Text(authManager.isLoading ? "Signing in..." : "Continue with Google")
                         .font(.system(size: 16, weight: .semibold))
                 }
-                .foregroundColor(DriveLessColors.forestGreen)
+                .foregroundColor(Color(red: 0.13, green: 0.27, blue: 0.13)) // Deep forest green
                 .frame(maxWidth: .infinity)
                 .frame(height: 44)
                 .background(
@@ -252,9 +278,9 @@ struct ContentView: View {
                 .cornerRadius(14)
                 .overlay(
                     RoundedRectangle(cornerRadius: 14)
-                        .stroke(themeManager.colors.forestGreen.opacity(0.3), lineWidth: 1)
+                        .stroke(Color(red: 0.13, green: 0.27, blue: 0.13).opacity(0.3), lineWidth: 1)
                 )
-                .shadow(color: themeManager.cardShadow(), radius: 6, x: 0, y: 3)
+                .shadow(color: .black.opacity(0.25), radius: 6, x: 0, y: 3)
             }
             .disabled(authManager.isLoading)
             .opacity(authManager.isLoading ? 0.7 : 1.0)
@@ -263,13 +289,15 @@ struct ContentView: View {
         }
     }
     
-    // MARK: - Privacy Notice Component
+    // MARK: - Privacy Notice Component (Original Friendly Version)
     private var privacyNotice: some View {
-        Text("By continuing, you agree to our Terms of Service and Privacy Policy. We protect your data and don't share personal information.")
-            .font(.system(size: 12, weight: .regular))
-            .foregroundColor(.white.opacity(0.8))
-            .multilineTextAlignment(.center)
-            .shadow(color: .black.opacity(0.2), radius: 1, x: 0, y: 1)
+        VStack(spacing: 4) {
+            Text("By continuing, you agree to our Terms of Service and Privacy Policy. We protect your data and don't share personal information")
+                .font(.system(size: 12, weight: .regular))
+                .foregroundColor(.white.opacity(0.7))
+                .multilineTextAlignment(.center)
+                .shadow(color: .black.opacity(0.2), radius: 1, x: 0, y: 1)
+        }
     }
     
     // MARK: - Compact Feature Item Component
@@ -287,7 +315,7 @@ struct ContentView: View {
         }
     }
     
-    // MARK: - Card Background (Using Theme System)
+    // MARK: - Card Background (Original Style)
     private var cardBackground: some View {
         RoundedRectangle(cornerRadius: 20)
             .fill(.ultraThinMaterial)
@@ -318,7 +346,7 @@ struct ContentView: View {
                         lineWidth: 1
                     )
             )
-            .shadow(color: themeManager.cardShadow(), radius: 20, x: 0, y: 10)
+            .shadow(color: .black.opacity(0.25), radius: 20, x: 0, y: 10)
     }
     
     // MARK: - Animation Helper

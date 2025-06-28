@@ -1,5 +1,14 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="23788.4" systemVersion="24F74" minimumToolsVersion="Automatic" sourceLanguage="Swift" usedWithSwiftData="YES" userDefinedModelVersionIdentifier="">
+    <entity name="AppEvent" representedClassName="AppEvent" syncable="YES" codeGenerationType="class">
+        <attribute name="details" optional="YES" attributeType="String"/>
+        <attribute name="errorMessage" optional="YES" attributeType="String"/>
+        <attribute name="eventType" attributeType="String"/>
+        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="success" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="timeStamp" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="userID" attributeType="String"/>
+    </entity>
     <entity name="SavedAddress" representedClassName="SavedAddress" syncable="YES">
         <attribute name="addressType" attributeType="String"/>
         <attribute name="createdDate" attributeType="Date" usesScalarValueType="NO"/>
@@ -17,7 +26,7 @@
         <attribute name="endLocationDisplayName" optional="YES" attributeType="String"/>
         <attribute name="estimatedTime" attributeType="String"/>
         <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
-        <attribute name="isFavorite" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="isFavorite" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
         <attribute name="routeName" optional="YES" attributeType="String"/>
         <attribute name="startLocation" attributeType="String"/>
         <attribute name="startLocationDisplayName" optional="YES" attributeType="String"/>
@@ -26,10 +35,37 @@
         <attribute name="totalDistance" attributeType="String"/>
         <attribute name="waypointOrder" optional="YES" attributeType="String"/>
     </entity>
+    <entity name="SystemMetrics" representedClassName="SystemMetrics" syncable="YES" codeGenerationType="class">
+        <attribute name="activeUsers" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="apiResponseTime" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="crashCount" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="date" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="memoryUsage" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+    </entity>
     <entity name="UsageTracking" representedClassName="UsageTracking" syncable="YES">
         <attribute name="date" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
         <attribute name="routeCalculations" attributeType="Integer 32" usesScalarValueType="YES"/>
         <attribute name="userID" optional="YES" attributeType="String"/>
+    </entity>
+    <entity name="UserMetrics" representedClassName="UserMetrics" syncable="YES" codeGenerationType="class">
+        <attribute name="accountCreatedDate" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="favoriteRoutes" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="lastActiveDate" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="totalAddresses" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="totalRoutes" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="userID" attributeType="String"/>
+    </entity>
+    <entity name="UserSession" representedClassName="UserSession" syncable="YES" codeGenerationType="class">
+        <attribute name="appVersion" attributeType="String"/>
+        <attribute name="deviceInfo" optional="YES" attributeType="String"/>
+        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="sessionDuration" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="signInMethod" attributeType="String"/>
+        <attribute name="signInTime" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="signOutTime" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="userID" attributeType="String"/>
     </entity>
 </model>

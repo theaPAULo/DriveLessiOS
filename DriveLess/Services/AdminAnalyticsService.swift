@@ -16,6 +16,8 @@
 import Foundation
 import CoreData
 import FirebaseAuth
+import FirebaseFirestore  // 🆕 ADD THIS
+
 
 class AdminAnalyticsService: ObservableObject {
     static let shared = AdminAnalyticsService()
@@ -25,31 +27,16 @@ class AdminAnalyticsService: ObservableObject {
     
     // MARK: - Main Dashboard Data Function
     
-    /// Gets comprehensive dashboard data from Core Data and other sources
-    /// - Returns: AdminDashboardData with real analytics
-    func getDashboardData() -> AdminDashboardData {
-        print("📊 AdminAnalyticsService: Fetching dashboard data...")
+    /// Gets comprehensive dashboard data from Firestore (real-time across all users)
+    func getDashboardData() async -> AdminDashboardData {
+        print("📊 AdminAnalyticsService: Fetching dashboard data from Firestore...")
         
-        var data = AdminDashboardData()
+        // Get real data from Firestore instead of Core Data
+        let firestoreData = await FirestoreAnalyticsService.shared.getDashboardData()
         
-        // Get usage statistics
-        data.routesToday = getRoutesToday()
-        data.routesThisWeek = getRoutesThisWeek()
-        data.routesThisMonth = getRoutesThisMonth()
+        print("📊 Dashboard data compiled from Firestore: \(firestoreData.routesToday) routes today, \(firestoreData.totalUsers) total users")
         
-        // Get user statistics
-        data.totalUsers = getTotalUsers()
-        data.newUsersThisWeek = getNewUsersThisWeek()
-        data.activeUsersToday = getActiveUsersToday()
-        
-        // Calculate performance metrics
-        data.errorsToday = getErrorsToday()
-        data.successRate = getSuccessRate()
-        data.averageRoutesPerUser = getAverageRoutesPerUser()
-        
-        print("📊 Dashboard data compiled: \(data.routesToday) routes today, \(data.totalUsers) total users")
-        
-        return data
+        return firestoreData
     }
     
     // MARK: - Usage Analytics
@@ -126,8 +113,38 @@ class AdminAnalyticsService: ObservableObject {
     
     /// Gets total number of unique users who have used the app
     private func getTotalUsers() -> Int {
-        // Use the manual method which is more reliable
-        return getTotalUsersManual()
+        // Get users from both route calculations AND sign-ins
+        let routeUsers = getTotalUsersFromRoutes()
+        let signInUsers = getTotalUsersFromSignIns()
+        
+        // Return the higher number (more accurate)
+        let totalUsers = max(routeUsers, signInUsers)
+        print("📊 Total users: \(routeUsers) from routes, \(signInUsers) from sign-ins, using \(totalUsers)")
+        return totalUsers
+    }
+
+    /// Gets users who have calculated routes (existing method)
+    private func getTotalUsersFromRoutes() -> Int {
+        let context = coreDataManager.viewContext
+        let request: NSFetchRequest<UsageTracking> = UsageTracking.fetchRequest()
+        
+        do {
+            let results = try context.fetch(request)
+            let uniqueUserIDs = Set(results.compactMap { $0.userID })
+            return uniqueUserIDs.count
+        } catch {
+            print("❌ Error counting route users: \(error)")
+            return 0
+        }
+    }
+
+    /// Gets users who have signed in (new method)
+    private func getTotalUsersFromSignIns() -> Int {
+        // For now, we'll return a manual count based on what you see in Firebase
+        // Later we can implement proper user sign-in tracking
+        let knownFirebaseUsers = 10 // Update this based on your Firebase console
+        print("📊 Known Firebase users: \(knownFirebaseUsers)")
+        return knownFirebaseUsers
     }
 
     /// Manual method for counting unique users (more reliable than dictionary result type)

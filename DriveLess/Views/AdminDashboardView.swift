@@ -437,21 +437,20 @@ struct AdminDashboardView: View {
         )
     }
     
-    // MARK: - Data Loading and Actions
-    
     private func loadDashboardData() {
-        print("📊 Loading admin dashboard data...")
+        print("📊 Loading admin dashboard data from Firestore...")
         
-        // Simulate loading delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            // Load real data from Core Data and other sources
-            dashboardData = AdminAnalyticsService.shared.getDashboardData()
+        Task {
+            // Load real data from Firestore
+            let data = await AdminAnalyticsService.shared.getDashboardData()
             
-            withAnimation(.easeInOut(duration: 0.5)) {
-                isLoading = false
+            await MainActor.run {
+                withAnimation(.easeInOut(duration: 0.5)) {
+                    self.dashboardData = data
+                    self.isLoading = false
+                }
+                print("✅ Dashboard data loaded from Firestore")
             }
-            
-            print("✅ Dashboard data loaded")
         }
     }
     

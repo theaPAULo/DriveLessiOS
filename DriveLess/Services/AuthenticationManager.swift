@@ -13,6 +13,8 @@ import GoogleSignIn
 import AuthenticationServices  // ADD: Import for Apple Sign-In
 import CryptoKit  // ADD: Import for Apple Sign-In crypto
 import CoreData  // ADD THIS LINE
+import FirebaseFirestore  // 🆕 ADD THIS
+
 
 // MARK: - User Model
 struct DriveLessUser {
@@ -59,15 +61,20 @@ class AuthenticationManager: NSObject, ObservableObject {
     private func updateUserState(_ firebaseUser: User?) {
         if let firebaseUser = firebaseUser {
             print("✅ User is signed in: \(firebaseUser.email ?? "No email")")
+            print("🔐 Firebase UID: \(firebaseUser.uid)") // ADD THIS LINE
             
             // Determine the provider based on Firebase provider data
             let provider: DriveLessUser.AuthProvider
+            let providerString: String
             if firebaseUser.providerData.contains(where: { $0.providerID == "google.com" }) {
                 provider = .google
+                providerString = "Google"
             } else if firebaseUser.providerData.contains(where: { $0.providerID == "apple.com" }) {
                 provider = .apple
+                providerString = "Apple"
             } else {
                 provider = .google // Default fallback
+                providerString = "Google"
             }
             
             // Create our user model
@@ -79,8 +86,16 @@ class AuthenticationManager: NSObject, ObservableObject {
                 provider: provider
             )
             self.isSignedIn = true
+            
+            // 🆕 NEW: Track user sign-in session to Firestore
+            FirestoreAnalyticsService.shared.trackUserSignIn(signInMethod: providerString)
+            
         } else {
             print("❌ User is signed out")
+            
+            // 🆕 NEW: Track sign-out to Firestore
+            FirestoreAnalyticsService.shared.trackUserSignOut()
+            
             self.user = nil
             self.isSignedIn = false
         }
@@ -92,11 +107,15 @@ class AuthenticationManager: NSObject, ObservableObject {
     // MARK: - Public Methods
     
     /// Signs out the current user
+    /// Signs out the current user
     func signOut() {
         print("🚪 Signing out user...")
         isLoading = true
         
         do {
+            // 🆕 NEW: End user session before signing out
+            FirestoreAnalyticsService.shared.trackUserSignOut()
+            
             try Auth.auth().signOut()
             print("✅ Successfully signed out")
         } catch {

@@ -9,6 +9,8 @@ import SwiftUI
 import GoogleMaps
 import GooglePlaces
 import CoreData
+import FirebaseFirestore  // 🆕 ADD THIS
+
 
 struct RouteResultsView: View {
     let routeData: RouteData
@@ -481,6 +483,15 @@ struct RouteResultsView: View {
                 case .success(let optimizedResult):
                     print("✅ Route calculation successful!")
                     
+                    // 🆕 ADD THIS: Track route calculation in Firestore
+                    let stopAddresses = routeData.optimizedStops.map { $0.name.isEmpty ? $0.address : $0.name }
+                    FirestoreAnalyticsService.shared.trackRouteCalculation(
+                        stops: stopAddresses,
+                        totalDistance: optimizedResult.totalDistance,
+                        totalTime: optimizedResult.estimatedTime,
+                        success: true
+                    )
+                    
                     // Increment usage counter (only on success)
                     if !UserDefaults.standard.bool(forKey: "driveless_admin_mode") {
                         self.usageTracker.incrementUsage()
@@ -509,6 +520,14 @@ struct RouteResultsView: View {
                 case .failure(let error):
                     print("❌ Route calculation failed: \(error)")
                     self.isLoading = false
+                    
+                    // 🆕 ADD THIS: Track failed route calculation
+                    FirestoreAnalyticsService.shared.trackRouteCalculation(
+                        stops: [],
+                        totalDistance: "0 miles",
+                        totalTime: "0 min",
+                        success: false
+                    )
                 }
             }
         }
