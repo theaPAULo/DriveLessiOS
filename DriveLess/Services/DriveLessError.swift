@@ -1,4 +1,3 @@
-//
 //  ErrorTrackingService.swift
 //  DriveLess
 //
@@ -72,18 +71,6 @@ class ErrorTrackingService: ObservableObject {
         if let location = location {
             print("   Location: \(location)")
         }
-        
-        // Track in both local Core Data and Firestore for dashboard
-        trackErrorLocally(errorContext: errorContext, userID: userID)
-        trackErrorInFirestore(errorContext: errorContext, userID: userID)
-        
-        // Track as event in existing analytics systems
-        RealTimeTrackingService.shared.trackEvent(
-            type: type.rawValue,
-            details: details,
-            success: false,
-            errorMessage: message
-        )
         
         FirestoreAnalyticsService.shared.trackEvent(
             type: type.rawValue,
@@ -198,25 +185,6 @@ class ErrorTrackingService: ObservableObject {
         return context
     }
     
-    /// Saves error to local Core Data using existing AppEvent entity
-    private func trackErrorLocally(errorContext: [String: Any], userID: String) {
-        RealTimeTrackingService.shared.trackEvent(
-            type: errorContext["errorType"] as? String ?? "unknown_error",
-            details: errorContext["details"] as? String,
-            success: false,
-            errorMessage: errorContext["message"] as? String
-        )
-    }
-    
-    /// Saves error to Firestore for admin dashboard analytics
-    private func trackErrorInFirestore(errorContext: [String: Any], userID: String) {
-        FirestoreAnalyticsService.shared.trackEvent(
-            type: errorContext["errorType"] as? String ?? "unknown_error",
-            details: errorContext["details"] as? String,
-            success: false,
-            errorMessage: errorContext["message"] as? String
-        )
-    }
     
     // MARK: - System Information Methods
     

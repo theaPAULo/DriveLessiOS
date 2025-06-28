@@ -521,13 +521,8 @@ struct RouteResultsView: View {
                     print("❌ Route calculation failed: \(error)")
                     self.isLoading = false
                     
-                    // 🆕 ADD THIS: Track failed route calculation
-                    FirestoreAnalyticsService.shared.trackRouteCalculation(
-                        stops: [],
-                        totalDistance: "0 miles",
-                        totalTime: "0 min",
-                        success: false
-                    )
+                    // Note: Error tracking is now handled by ErrorTrackingService in RouteCalculator
+                    // No need for duplicate tracking here
                 }
             }
         }

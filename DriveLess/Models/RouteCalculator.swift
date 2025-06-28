@@ -15,6 +15,8 @@
 import Foundation
 import GoogleMaps
 import CoreLocation
+import FirebaseAuth  // For ErrorTrackingService
+
 
 // UPDATED: Enhanced struct to preserve original business names
 struct OriginalRouteInputs {
@@ -91,12 +93,20 @@ class RouteCalculator: ObservableObject {
         URLSession.shared.dataTask(with: url) { data, response, error in
             if let error = error {
                 print("❌ API request failed: \(error.localizedDescription)")
+                
+                // 🆕 ADD THIS: Track network error
+                ErrorTrackingService.shared.trackNetworkError(error, operation: "Google Directions API Request")
+                
                 completion(.failure(error))
                 return
             }
             
             guard let data = data else {
-                completion(.failure(RouteCalculationError.noData))
+                // 🆕 ADD THIS: Track API error
+                let noDataError = RouteCalculationError.noData
+                ErrorTrackingService.shared.trackGoogleAPIError(noDataError, endpoint: "directions/json")
+                
+                completion(.failure(noDataError))
                 return
             }
             
@@ -120,11 +130,20 @@ class RouteCalculator: ObservableObject {
                     completion(.success(optimizedResult))
                 } else {
                     print("❌ API returned error status: \(result.status)")
-                    completion(.failure(RouteCalculationError.apiError(result.status)))
+                    
+                    // 🆕 ADD THIS: Track API error with status
+                    let apiError = RouteCalculationError.apiError(result.status)
+                    ErrorTrackingService.shared.trackGoogleAPIError(apiError, endpoint: "directions/json - Status: \(result.status)")
+                    
+                    completion(.failure(apiError))
                 }
                 
             } catch {
                 print("❌ Failed to parse API response: \(error)")
+                
+                // 🆕 ADD THIS: Track parsing error
+                ErrorTrackingService.shared.trackGoogleAPIError(error, endpoint: "directions/json - JSON parsing failed")
+                
                 completion(.failure(error))
             }
             
