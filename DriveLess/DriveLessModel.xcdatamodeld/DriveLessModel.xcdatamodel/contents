@@ -18,7 +18,7 @@
         <attribute name="isDefault" attributeType="Boolean" usesScalarValueType="YES"/>
         <attribute name="label" attributeType="String"/>
     </entity>
-    <entity name="SavedRoute" representedClassName="SavedRoute" syncable="YES">
+    <entity name="SavedRoute" representedClassName="SavedRoute" syncable="YES" codeGenerationType="category">
         <attribute name="considerTraffic" attributeType="Boolean" usesScalarValueType="YES"/>
         <attribute name="createdDate" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="customName" optional="YES" attributeType="String"/>

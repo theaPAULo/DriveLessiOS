@@ -15,7 +15,6 @@
 		E45E2C782E0B0DAE00A9E77F /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = E45E2C772E0B0DAE00A9E77F /* GoogleService-Info.plist */; };
 		E45EA6DD2E04718100C89EBE /* GooglePlaces in Frameworks */ = {isa = PBXBuildFile; productRef = E45EA6DC2E04718100C89EBE /* GooglePlaces */; };
 		E45EA6E02E04718E00C89EBE /* GoogleMaps in Frameworks */ = {isa = PBXBuildFile; productRef = E45EA6DF2E04718E00C89EBE /* GoogleMaps */; };
-		E46E2CFF2E0A519D00203AF0 /* SavedRoute+CoreDataProperties.swift in Sources */ = {isa = PBXBuildFile; fileRef = E46E2CFE2E0A519D00203AF0 /* SavedRoute+CoreDataProperties.swift */; };
 		E46E2D002E0A519D00203AF0 /* SavedRoute+CoreDataClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = E46E2CFD2E0A519D00203AF0 /* SavedRoute+CoreDataClass.swift */; };
 		E49106D32E05CBAE00F1E96F /* AuthenticationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E49106D22E05CBAE00F1E96F /* AuthenticationServices.framework */; };
 		E4BB83A02E09B137004677A5 /* UsageTracking+CoreDataClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4BB839F2E09B133004677A5 /* UsageTracking+CoreDataClass.swift */; };
@@ -45,7 +44,6 @@
 		E45E2C732E0AFAE700A9E77F /* MessageUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MessageUI.framework; path = System/Library/Frameworks/MessageUI.framework; sourceTree = SDKROOT; };
 		E45E2C772E0B0DAE00A9E77F /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		E46E2CFD2E0A519D00203AF0 /* SavedRoute+CoreDataClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SavedRoute+CoreDataClass.swift"; sourceTree = "<group>"; };
-		E46E2CFE2E0A519D00203AF0 /* SavedRoute+CoreDataProperties.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SavedRoute+CoreDataProperties.swift"; sourceTree = "<group>"; };
 		E49106D22E05CBAE00F1E96F /* AuthenticationServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AuthenticationServices.framework; path = System/Library/Frameworks/AuthenticationServices.framework; sourceTree = SDKROOT; };
 		E4B4DB372E04657300992385 /* DriveLess.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DriveLess.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E4B4DB442E04657500992385 /* DriveLessTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DriveLessTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -133,7 +131,6 @@
 			isa = PBXGroup;
 			children = (
 				E46E2CFD2E0A519D00203AF0 /* SavedRoute+CoreDataClass.swift */,
-				E46E2CFE2E0A519D00203AF0 /* SavedRoute+CoreDataProperties.swift */,
 				E4BB83A12E09B148004677A5 /* UsageTracking+CoreDataProperties.swift */,
 				E4BB839F2E09B133004677A5 /* UsageTracking+CoreDataClass.swift */,
 				E4E945C32E061A1E00004CFB /* SavedAddress+CoreDataClass.swift */,
@@ -318,7 +315,6 @@
 				E4E945C52E061A1E00004CFB /* SavedAddress+CoreDataClass.swift in Sources */,
 				E4BB83A22E09B14B004677A5 /* UsageTracking+CoreDataProperties.swift in Sources */,
 				E4E945C62E061A1E00004CFB /* SavedAddress+CoreDataProperties.swift in Sources */,
-				E46E2CFF2E0A519D00203AF0 /* SavedRoute+CoreDataProperties.swift in Sources */,
 				E46E2D002E0A519D00203AF0 /* SavedRoute+CoreDataClass.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -388,7 +384,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_ENTITLEMENTS = "";
 				COPY_PHASE_STRIP = NO;
-				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = DCXK36979S;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -453,7 +449,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_ENTITLEMENTS = "";
 				COPY_PHASE_STRIP = NO;
-				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = DCXK36979S;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -484,11 +480,12 @@
 				CODE_SIGN_ENTITLEMENTS = DriveLess/DriveLess.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = YES;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEPLOYMENT_POSTPROCESSING = YES;
 				DEVELOPMENT_TEAM = DCXK36979S;
 				ENABLE_PREVIEWS = YES;
 				FIREBASE_CRASHLYTICS_UPLOAD_SYMBOLS = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				GOOGLE_UPLOAD_SYMBOLS = NO;
 				INFOPLIST_FILE = DriveLess/Info.plist;
@@ -504,7 +501,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.2;
 				PRODUCT_BUNDLE_IDENTIFIER = com.soni.driveless;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRIP_INSTALLED_PRODUCT = YES;
@@ -522,11 +519,13 @@
 				CODE_SIGN_ENTITLEMENTS = DriveLess/DriveLess.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = YES;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
+				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEPLOYMENT_POSTPROCESSING = YES;
 				DEVELOPMENT_TEAM = DCXK36979S;
 				ENABLE_PREVIEWS = YES;
 				FIREBASE_CRASHLYTICS_UPLOAD_SYMBOLS = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				GOOGLE_UPLOAD_SYMBOLS = NO;
 				INFOPLIST_FILE = DriveLess/Info.plist;
@@ -542,7 +541,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.2;
 				PRODUCT_BUNDLE_IDENTIFIER = com.soni.driveless;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRIP_INSTALLED_PRODUCT = YES;
