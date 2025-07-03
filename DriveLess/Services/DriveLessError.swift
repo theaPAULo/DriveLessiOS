@@ -14,6 +14,7 @@
 
 import Foundation
 import FirebaseAuth
+import FirebaseAnalytics
 import UIKit
 
 // MARK: - Error Types
@@ -52,10 +53,10 @@ class ErrorTrackingService: ObservableObject {
         location: String? = nil
     ) {
         let timestamp = Date()
-        let userID = Auth.auth().currentUser?.uid ?? "anonymous"
+        let _ = Auth.auth().currentUser?.uid ?? "anonymous"  // Use _ instead of userID
         
         // Create comprehensive error context
-        let errorContext = createErrorContext(
+        let _ = createErrorContext(  // Use _ instead of errorContext
             type: type,
             message: message,
             details: details,

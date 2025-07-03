@@ -6,7 +6,10 @@
 //
 
 import SwiftUI
+import CoreLocation
 import GooglePlaces
+import Foundation
+
 
 struct RouteInputView: View {
     // MARK: - State Properties
@@ -384,19 +387,24 @@ struct RouteInputView: View {
             
             // Add stop button (themed)
             if stops.count < 8 {
-                Button(action: {
-                    hapticManager.buttonTap()
-                    addStop()
-                }) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(themeManager.accent)
-                        
-                        Text("Add Stop")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(themeManager.accent)
+                HStack {
+                    Button(action: {
+                        hapticManager.buttonTap()
+                        addStop()
+                    }) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(themeManager.primary) // Changed from .accent to .primary for better visibility
+                            
+                            Text("Add Stop")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(themeManager.primary) // Changed from .accent to .primary for better visibility
+                        }
                     }
+                    .padding(.leading, 4) // Same padding as "Use current location" buttons
+                    
+                    Spacer() // This pushes the button to the left
                 }
                 .padding(.top, 4)
             }
@@ -1000,4 +1008,6 @@ struct SavedAddressChip: View {
         locationManager: LocationManager(),
         routeLoader: RouteLoader()
     )
+    .environmentObject(SettingsManager())
+    .environmentObject(HapticManager())
 }

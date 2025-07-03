@@ -168,41 +168,41 @@ class AuthenticationManager: NSObject, ObservableObject {
             }
         }
         
-        /// Clears all user data from Core Data
-        private func clearAllUserData() async {
-            await withCheckedContinuation { continuation in
-                let context = CoreDataManager.shared.backgroundContext()
-                
-                context.perform {
-                    do {
-                        // Delete all SavedRoute entities
-                        let routeRequest: NSFetchRequest<NSFetchRequestResult> = NSFetchRequest(entityName: "SavedRoute")
-                        let routeDeleteRequest = NSBatchDeleteRequest(fetchRequest: routeRequest)
-                        try context.execute(routeDeleteRequest)
-                        
-                        // Delete all SavedAddress entities
-                        let addressRequest: NSFetchRequest<NSFetchRequestResult> = NSFetchRequest(entityName: "SavedAddress")
-                        let addressDeleteRequest = NSBatchDeleteRequest(fetchRequest: addressRequest)
-                        try context.execute(addressDeleteRequest)
-                        
-                        // Delete all UsageTracking entities
-                        let usageRequest: NSFetchRequest<NSFetchRequestResult> = NSFetchRequest(entityName: "UsageTracking")
-                        let usageDeleteRequest = NSBatchDeleteRequest(fetchRequest: usageRequest)
-                        try context.execute(usageDeleteRequest)
-                        
-                        // Save the context
-                        try context.save()
-                        
-                        print("✅ All local user data cleared")
-                        continuation.resume()
-                        
-                    } catch {
-                        print("❌ Failed to clear local data: \(error.localizedDescription)")
-                        continuation.resume()
-                    }
+    /// Clears all user data from Core Data
+    private func clearAllUserData() async {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            let context = CoreDataManager.shared.backgroundContext()
+            
+            context.perform {
+                do {
+                    // Delete all SavedRoute entities
+                    let routeRequest: NSFetchRequest<NSFetchRequestResult> = NSFetchRequest(entityName: "SavedRoute")
+                    let routeDeleteRequest = NSBatchDeleteRequest(fetchRequest: routeRequest)
+                    try context.execute(routeDeleteRequest)
+                    
+                    // Delete all SavedAddress entities
+                    let addressRequest: NSFetchRequest<NSFetchRequestResult> = NSFetchRequest(entityName: "SavedAddress")
+                    let addressDeleteRequest = NSBatchDeleteRequest(fetchRequest: addressRequest)
+                    try context.execute(addressDeleteRequest)
+                    
+                    // Delete all UsageTracking entities
+                    let usageRequest: NSFetchRequest<NSFetchRequestResult> = NSFetchRequest(entityName: "UsageTracking")
+                    let usageDeleteRequest = NSBatchDeleteRequest(fetchRequest: usageRequest)
+                    try context.execute(usageDeleteRequest)
+                    
+                    // Save the context
+                    try context.save()
+                    
+                    print("✅ All local user data cleared")
+                    continuation.resume()
+                    
+                } catch {
+                    print("❌ Failed to clear local data: \(error.localizedDescription)")
+                    continuation.resume()
                 }
             }
         }
+    }
     
     /// Reauthenticates the user and then deletes the account
         func reauthenticateAndDeleteAccount() async {
@@ -244,55 +244,39 @@ class AuthenticationManager: NSObject, ObservableObject {
             }
         }
         
-        /// Reauthenticates with Google
-        private func reauthenticateWithGoogle() async throws {
-            return try await withCheckedThrowingContinuation { continuation in
-                Task { @MainActor in
-                    // Get the client ID from Firebase configuration
-                    guard let clientID = FirebaseApp.app()?.options.clientID else {
-                        continuation.resume(throwing: NSError(domain: "AuthError", code: -1, userInfo: [NSLocalizedDescriptionKey: "No Firebase client ID found"]))
-                        return
-                    }
-                    
-                    // Configure Google Sign-In
-                    guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                          let rootViewController = windowScene.windows.first?.rootViewController else {
-                        continuation.resume(throwing: NSError(domain: "AuthError", code: -1, userInfo: [NSLocalizedDescriptionKey: "Could not find root view controller"]))
-                        return
-                    }
-                    
-                    GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID)
-                    
-                    GIDSignIn.sharedInstance.signIn(withPresenting: rootViewController) { result, error in
-                        if let error = error {
-                            continuation.resume(throwing: error)
-                            return
-                        }
-                        
-                        guard let user = result?.user,
-                              let idToken = user.idToken?.tokenString else {
-                            continuation.resume(throwing: NSError(domain: "AuthError", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to get Google user token"]))
-                            return
-                        }
-                        
-                        let credential = GoogleAuthProvider.credential(
-                            withIDToken: idToken,
-                            accessToken: user.accessToken.tokenString
-                        )
-                        
-                        // Reauthenticate with Firebase
-                        Auth.auth().currentUser?.reauthenticate(with: credential) { _, error in
-                            if let error = error {
-                                continuation.resume(throwing: error)
-                            } else {
-                                print("✅ Google reauthentication successful")
-                                continuation.resume()
-                            }
-                        }
-                    }
-                }
-            }
+    /// Reauthenticates with Google
+    private func reauthenticateWithGoogle() async throws {
+        // Get the client ID from Firebase configuration
+        guard let clientID = FirebaseApp.app()?.options.clientID else {
+            throw NSError(domain: "AuthError", code: -1, userInfo: [NSLocalizedDescriptionKey: "No Firebase client ID found"])
         }
+        
+        // Configure Google Sign-In
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let rootViewController = windowScene.windows.first?.rootViewController else {
+            throw NSError(domain: "AuthError", code: -1, userInfo: [NSLocalizedDescriptionKey: "Could not find root view controller"])
+        }
+        
+        await MainActor.run {
+            GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID)
+        }
+        
+        // Use the async version of signIn
+        let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: rootViewController)
+        
+        guard let idToken = result.user.idToken?.tokenString else {
+            throw NSError(domain: "AuthError", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to get Google user token"])
+        }
+        
+        let credential = GoogleAuthProvider.credential(
+            withIDToken: idToken,
+            accessToken: result.user.accessToken.tokenString
+        )
+        
+        // Reauthenticate with Firebase
+        try await Auth.auth().currentUser?.reauthenticate(with: credential)
+        print("✅ Google reauthentication successful")
+    }
         
         /// Reauthenticates with Apple
         private func reauthenticateWithApple() async throws {
@@ -325,58 +309,61 @@ class AuthenticationManager: NSObject, ObservableObject {
         isLoading = true
         errorMessage = nil
         
-        // Get the client ID from Firebase configuration
-        guard let clientID = FirebaseApp.app()?.options.clientID else {
-            print("❌ No Firebase client ID found")
-            errorMessage = "Configuration error: No client ID"
-            isLoading = false
-            return
-        }
-        
-        // Configure Google Sign-In
-        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-              let rootViewController = windowScene.windows.first?.rootViewController else {
-            print("❌ Could not find root view controller")
-            errorMessage = "Unable to present sign-in"
-            isLoading = false
-            return
-        }
-        
-        GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID)
-        
-        GIDSignIn.sharedInstance.signIn(withPresenting: rootViewController) { [weak self] result, error in
-            Task { @MainActor in
-                if let error = error {
-                    print("❌ Google Sign-In error: \(error.localizedDescription)")
-                    self?.errorMessage = "Google Sign-In failed: \(error.localizedDescription)"
-                    self?.isLoading = false
+        Task {
+            do {
+                // Get the client ID from Firebase configuration
+                guard let clientID = FirebaseApp.app()?.options.clientID else {
+                    await MainActor.run {
+                        print("❌ No Firebase client ID found")
+                        self.errorMessage = "Configuration error: No client ID"
+                        self.isLoading = false
+                    }
                     return
                 }
                 
-                guard let user = result?.user,
-                      let idToken = user.idToken?.tokenString else {
-                    print("❌ Failed to get Google user token")
-                    self?.errorMessage = "Failed to get authentication token"
-                    self?.isLoading = false
+                // Configure Google Sign-In
+                guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                      let rootViewController = windowScene.windows.first?.rootViewController else {
+                    await MainActor.run {
+                        print("❌ Could not find root view controller")
+                        self.errorMessage = "Unable to present sign-in"
+                        self.isLoading = false
+                    }
+                    return
+                }
+                
+                GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID)
+                
+                // Use the async version of signIn
+                let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: rootViewController)
+                
+                guard let idToken = result.user.idToken?.tokenString else {
+                    await MainActor.run {
+                        print("❌ Failed to get Google user token")
+                        self.errorMessage = "Failed to get authentication token"
+                        self.isLoading = false
+                    }
                     return
                 }
                 
                 let credential = GoogleAuthProvider.credential(
                     withIDToken: idToken,
-                    accessToken: user.accessToken.tokenString
+                    accessToken: result.user.accessToken.tokenString
                 )
                 
                 // Sign in to Firebase with Google credential
-                Auth.auth().signIn(with: credential) { authResult, error in
-                    Task { @MainActor in
-                        if let error = error {
-                            print("❌ Firebase Google Sign-In error: \(error.localizedDescription)")
-                            self?.errorMessage = "Sign-in failed: \(error.localizedDescription)"
-                        } else {
-                            print("✅ Google Sign-In successful")
-                        }
-                        self?.isLoading = false
-                    }
+                try await Auth.auth().signIn(with: credential)
+                
+                await MainActor.run {
+                    print("✅ Google Sign-In successful")
+                    self.isLoading = false
+                }
+                
+            } catch {
+                await MainActor.run {
+                    print("❌ Google Sign-In error: \(error.localizedDescription)")
+                    self.errorMessage = "Google Sign-In failed: \(error.localizedDescription)"
+                    self.isLoading = false
                 }
             }
         }
@@ -417,6 +404,8 @@ class AuthenticationManager: NSObject, ObservableObject {
         while remainingLength > 0 {
             let randoms: [UInt8] = (0 ..< 16).map { _ in
                 var random: UInt8 = 0
+                // Using SecRandomCopyBytes for cryptographically secure random generation
+                // This is the correct approach for security-sensitive operations
                 let errorCode = SecRandomCopyBytes(kSecRandomDefault, 1, &random)
                 if errorCode != errSecSuccess {
                     fatalError("Unable to generate nonce. SecRandomCopyBytes failed with OSStatus \(errorCode)")

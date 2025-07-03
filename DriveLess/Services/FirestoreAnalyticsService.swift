@@ -186,7 +186,7 @@ class FirestoreAnalyticsService: ObservableObject {
             field: FieldValue.increment(Int64(amount)),
             "lastUpdated": Date()
         ]) { error in
-            if let error = error {
+            if error != nil {  // Use boolean test instead of let error
                 // Document might not exist, create it
                 dailyRef.setData([
                     field: amount,
